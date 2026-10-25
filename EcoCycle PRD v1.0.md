@@ -509,7 +509,7 @@ EcoCycle PRD v1.0
 
 5. EcoCycle verifies identity and authorization documents but does not guarantee recycling outcomes; recyclers own their compliance. 
 
-6. The existing Lovable simulator is not reused. Its data model and ideas such as the status lifecycle and rewards ledger carry over, but the code is rebuilt. 
+6. The initial prototype simulator is not reused. Its data model and ideas such as the status lifecycle and rewards ledger carry over, but the code is rebuilt. 
 
 7. No customer online payments in v1, so no payment gateway is required at launch. 
 
