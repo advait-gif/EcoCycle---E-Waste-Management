@@ -38,7 +38,7 @@ export function useBackend() {
     };
   }, []);
 
-  const switchRole = async (role: "customer" | "collector" | "recycler" | "admin") => {
+  const switchRole = async (role: "collector" | "recycler" | "admin") => {
     setIsAuthenticating(true);
     try {
       await ensureDemoLogin(role);

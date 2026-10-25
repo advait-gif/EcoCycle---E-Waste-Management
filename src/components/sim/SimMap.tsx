@@ -8,37 +8,41 @@ export function SimMap({ compact = false }: { compact?: boolean }) {
   const customer = s.customers.find((c) => c.id === pickup?.customerId) ?? s.customers[0];
   const agent = s.agents.find((a) => a.id === pickup?.agentId) ?? s.agents[0];
   const center = s.centers.find((c) => c.id === pickup?.centerId) ?? s.centers[0];
-  if (!customer || !agent || !center) return null;
+  if (!agent || !center) return null;
 
-  const dx = customer.loc.x - agent.loc.x;
-  const dy = customer.loc.y - agent.loc.y;
-  const distanceKm = Math.round(Math.hypot(dx, dy) * 0.06 * 10) / 10;
-  const etaMin = Math.max(1, Math.round(distanceKm * 2.5));
+  const dx = customer ? customer.loc.x - agent.loc.x : 0;
+  const dy = customer ? customer.loc.y - agent.loc.y : 0;
+  const distanceKm = customer ? Math.round(Math.hypot(dx, dy) * 0.06 * 10) / 10 : 0;
+  const etaMin = customer ? Math.max(1, Math.round(distanceKm * 2.5)) : 0;
 
   return (
     <div className="ec-card h-full p-5">
       <div className="mb-4 flex items-center justify-between">
-        <div className="font-display text-lg font-bold">Simulated Map</div>
-        <Chip tone="sky">SIM GPS</Chip>
+        <div className="font-display text-lg font-bold">Live Fleet &amp; Facility Network</div>
+        <Chip tone="sky">FLEET GPS</Chip>
       </div>
       <div
         className={`ec-grid relative overflow-hidden rounded-2xl border border-border bg-cream ${
           compact ? "aspect-[16/9]" : "aspect-[4/3]"
         }`}
       >
-        <div
-          className="ec-route absolute h-1"
-          style={{
-            left: `${Math.min(agent.loc.x, customer.loc.x)}%`,
-            top: `${Math.min(agent.loc.y, customer.loc.y)}%`,
-            width: `${Math.abs(dx)}%`,
-          }}
-        />
+        {customer && (
+          <div
+            className="ec-route absolute h-1"
+            style={{
+              left: `${Math.min(agent.loc.x, customer.loc.x)}%`,
+              top: `${Math.min(agent.loc.y, customer.loc.y)}%`,
+              width: `${Math.abs(dx)}%`,
+            }}
+          />
+        )}
         <Marker x={center.loc.x} y={center.loc.y} emoji="🏭" label={center.name} tone="bg-ink text-ink-foreground" />
         {s.recyclers.map((r) => (
           <Marker key={r.id} x={r.loc.x} y={r.loc.y} emoji="⚙️" label={r.name} tone="bg-sun text-sun-foreground" />
         ))}
-        <Marker x={customer.loc.x} y={customer.loc.y} emoji="📍" label={customer.name} tone="bg-sky text-sky-foreground" />
+        {customer && (
+          <Marker x={customer.loc.x} y={customer.loc.y} emoji="📍" label={customer.name} tone="bg-sky text-sky-foreground" />
+        )}
         <Marker
           x={agent.loc.x}
           y={agent.loc.y}
@@ -47,10 +51,17 @@ export function SimMap({ compact = false }: { compact?: boolean }) {
           tone="bg-coral text-coral-foreground"
           big
         />
-        <div className="absolute top-3 right-3 rounded-xl bg-ink/90 px-3 py-2 text-[11px] leading-tight text-ink-foreground">
-          <div className="font-mono font-bold text-lime">{distanceKm} km</div>
-          <div className="opacity-80">ETA {etaMin} min · Live Transit</div>
-        </div>
+        {customer ? (
+          <div className="absolute top-3 right-3 rounded-xl bg-ink/90 px-3 py-2 text-[11px] leading-tight text-ink-foreground">
+            <div className="font-mono font-bold text-lime">{distanceKm} km</div>
+            <div className="opacity-80">ETA {etaMin} min · Live Transit</div>
+          </div>
+        ) : (
+          <div className="absolute top-3 right-3 rounded-xl bg-ink/90 px-3 py-2 text-[11px] leading-tight text-ink-foreground">
+            <div className="font-mono font-bold text-lime">Active Network</div>
+            <div className="opacity-80">Awaiting customer collection request</div>
+          </div>
+        )}
       </div>
       <p className="mt-3 text-xs font-semibold text-muted-foreground flex items-center justify-between">
         <span>📍 Bengaluru Urban Metro · Live Collection &amp; Facility Network</span>

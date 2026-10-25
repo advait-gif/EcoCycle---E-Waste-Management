@@ -10,9 +10,8 @@ const API_HOST = typeof window !== "undefined" && window.location.hostname
 export const API_BASE = (typeof import.meta !== "undefined" && (import.meta.env?.['VITE_API_URL'] as string | undefined)) || `${API_HOST}/api/v1`;
 export const HEALTH_URL = `${API_HOST}/health`;
 
-// Default verified accounts
+// System operations accounts (for field dispatch and recycling intake)
 export const DEMO_CREDENTIALS = {
-  customer: { identifier: "advaitnawathe007@gmail.com", password: "Pass@1234", name: "Advait Nawathe", role: "CUSTOMER" },
   collector: { identifier: "collector@test.demo", password: "Pass@1234", name: "Verified Collector Fleet", role: "COLLECTOR" },
   recycler: { identifier: "recycler@test.demo", password: "Pass@1234", name: "Authorized CPCB Recycler", role: "RECYCLER" },
   admin: { identifier: "admin@ecocycle.demo", password: "Admin@1234", name: "EcoCycle Operations", role: "ADMIN" },
@@ -228,7 +227,7 @@ export async function googleAuth(payload: {
   return data;
 }
 
-export async function ensureDemoLogin(role: "customer" | "collector" | "recycler" | "admin" = "customer"): Promise<string> {
+export async function ensureDemoLogin(role: "collector" | "recycler" | "admin"): Promise<string> {
   const creds = DEMO_CREDENTIALS[role];
   try {
     const res = await login(creds.identifier, creds.password);

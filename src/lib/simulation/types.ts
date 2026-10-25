@@ -207,7 +207,7 @@ export interface SimState {
   clock: number;
   settings: SimSettings;
   role: Role;
-  currentCustomerId: string;
+  currentCustomerId: string | null;
   customers: Customer[];
   agents: Agent[];
   centers: Center[];

@@ -88,12 +88,8 @@ export const SCENARIOS = [
   { id: "lifecycle", name: "Complete Successful Lifecycle", desc: "Pickup → certificate → reward." },
 ] as const;
 
-export const DEMO_CUSTOMERS = [
-  { name: "Advait Nawathe", address: "102 Metro View, Indiranagar, Bengaluru 560038" },
-  { name: "Kiran Rao", address: "44 Residency Road, Richmond Town, Bengaluru 560025" },
-  { name: "Vikram Mehta", address: "7 14th Main, HSR Layout Sector 4, Bengaluru 560102" },
-  { name: "Ananya Deshpande", address: "91 5th Cross, Koramangala 4th Block, Bengaluru 560034" },
-];
+// No inbuilt customer accounts — accounts are populated strictly upon registration.
+export const DEMO_CUSTOMERS: Array<{ name: string; address: string; email?: string }> = [];
 
 export const DEMO_AGENTS = ["EcoAgent 01 (Indiranagar)", "EcoAgent 02 (Whitefield)", "EcoAgent 03 (HSR Layout)", "EcoAgent 04 (Peenya)"];
 export const DEMO_CENTERS = ["EcoCycle Hub East (Whitefield)", "EcoCycle Hub Central (Indiranagar)", "EcoCycle Hub West (Peenya)"];

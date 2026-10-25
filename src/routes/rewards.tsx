@@ -10,6 +10,8 @@ import {
   getRewardsWallet,
   getRewardsLedger,
   getCertificates,
+  getToken,
+  getMe,
   type ApiWallet,
   type ApiLedgerEntry,
   type ApiRecyclingCertificate,
@@ -34,6 +36,7 @@ export const Route = createFileRoute("/rewards")({
 function RewardsPage() {
   const s = useSim();
   const { isOnline } = useBackend();
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [wallet, setWallet] = useState<ApiWallet | null>(null);
   const [ledger, setLedger] = useState<ApiLedgerEntry[]>([]);
   const [certificates, setCertificates] = useState<ApiRecyclingCertificate[]>([]);
@@ -44,12 +47,25 @@ function RewardsPage() {
   const redeemed = txns.filter((r) => r.type === "REDEEM").reduce((t, r) => t + Math.abs(r.points), 0);
 
   useEffect(() => {
-    if (isOnline) {
+    const syncUser = () => {
+      if (getToken()) {
+        getMe().then(setCurrentUser).catch(() => setCurrentUser(null));
+      } else {
+        setCurrentUser(null);
+      }
+    };
+    syncUser();
+    window.addEventListener("ecocycle-auth-change", syncUser);
+    return () => window.removeEventListener("ecocycle-auth-change", syncUser);
+  }, []);
+
+  useEffect(() => {
+    if (isOnline && getToken()) {
       getRewardsWallet().then(setWallet).catch(() => {});
       getRewardsLedger().then(setLedger).catch(() => {});
       getCertificates().then(setCertificates).catch(() => {});
     }
-  }, [isOnline]);
+  }, [isOnline, currentUser]);
 
   const displayBalance = isOnline && wallet ? wallet.balance : (customer?.points ?? 0);
   const displayEarned = isOnline && wallet ? wallet.lifetime_earned : earned;
@@ -63,26 +79,46 @@ function RewardsPage() {
         </SectionNote>
       </header>
 
-      <Card>
-        <CardTitle
-          title="Active Customer Account"
-          badge={<Chip tone="lime">Authenticated Profile</Chip>}
-        />
-        <div className="flex flex-wrap gap-2.5">
-          {s.customers.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setCurrentCustomer(c.id)}
-              className={`rounded-2xl px-4 py-2 text-sm font-bold transition-all cursor-pointer ${
-                c.id === customer?.id ? "bg-ink text-ink-foreground shadow-sm" : "bg-cream text-ink border border-border/40 hover:bg-cream/80"
-              }`}
+      {currentUser || customer ? (
+        <Card>
+          <CardTitle
+            title="Active Customer Account"
+            badge={<Chip tone="lime">Registered Participant</Chip>}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="font-bold text-base text-foreground flex items-center gap-2">
+                <span>👤</span>
+                <span>{currentUser?.name || customer?.name}</span>
+              </div>
+              <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                {currentUser?.email || customer?.email}
+              </div>
+            </div>
+            <div className="rounded-full bg-leaf/10 border border-leaf/30 px-3 py-1 text-xs font-bold text-leaf">
+              Verified Green Rewards Active
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <Card className="border-2 border-dashed border-border bg-cream/40">
+          <CardTitle
+            title="Customer Account"
+            badge={<Chip tone="coral">Not Signed In</Chip>}
+          />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              No registered customer session active. Register an account or sign in to view your verified green credits and certificate custody ledger.
+            </p>
+            <Link
+              to="/login"
+              className="rounded-xl bg-leaf px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-leaf/90 shrink-0"
             >
-              👤 {c.name}
-            </button>
-          ))}
-        </div>
-      </Card>
+              Register / Sign In →
+            </Link>
+          </div>
+        </Card>
+      )}
 
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Stat label="Current Wallet Balance" value={`${displayBalance} pts`} tone="text-leaf" />

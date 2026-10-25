@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { GoogleIcon } from "./GoogleIcon";
-import { getToken, getMe, setStoredRole } from "@/lib/api";
+import { getToken, getMe } from "@/lib/api";
 import { useBackend } from "@/hooks/use-backend";
 
 interface GoogleAuthPromptModalProps {
@@ -15,8 +15,7 @@ export function GoogleAuthPromptModal({ forceOpen = false, onClose }: GoogleAuth
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const { switchRole, isOnline } = useBackend();
-  const [roleLoading, setRoleLoading] = useState<string | null>(null);
+  const { isOnline } = useBackend();
 
   useEffect(() => {
     setMounted(true);
@@ -56,19 +55,6 @@ export function GoogleAuthPromptModal({ forceOpen = false, onClose }: GoogleAuth
     window.location.reload();
   };
 
-  const handleQuickRole = async (roleKey: "customer" | "collector" | "recycler") => {
-    setRoleLoading(roleKey);
-    try {
-      await switchRole(roleKey);
-      setStoredRole(roleKey.toUpperCase());
-      handleDismiss();
-      window.location.reload();
-    } catch (e) {
-      console.warn("Quick role switch error:", e);
-    } finally {
-      setRoleLoading(null);
-    }
-  };
 
   if (!mounted || !isOpen) return null;
 

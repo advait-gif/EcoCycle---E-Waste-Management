@@ -193,58 +193,38 @@ export function GoogleSignInButton({
             </div>
 
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Select your Google Account to authenticate directly and access EcoCycle:
+              Register or sign in with your Google email and name:
             </p>
 
-            {/* Quick 1-click accounts */}
-            <div className="space-y-2.5">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => handleManualGoogleAuth("advaitnawathe007@gmail.com", "Advait Nawathe")}
-                className="w-full flex items-center gap-3.5 rounded-2xl border-2 border-leaf/30 bg-leaf/5 p-3.5 text-left transition-all hover:bg-leaf/15 hover:border-leaf group cursor-pointer"
-              >
-                <div className="grid size-11 place-items-center rounded-full bg-[#4285F4] text-white font-bold text-base shadow-sm">
-                  AN
-                </div>
-                <div className="flex-1 truncate">
-                  <div className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                    Advait Nawathe
-                    <span className="rounded-full bg-leaf/20 px-1.5 py-0.2 text-[9px] font-extrabold text-leaf">Active</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground font-mono">advaitnawathe007@gmail.com</div>
-                </div>
-                <span className="rounded-full bg-leaf px-3 py-1.5 text-xs font-bold text-white shadow-sm group-hover:scale-105 transition-transform">
-                  1-Click Sign In →
-                </span>
-              </button>
-            </div>
-
-            {/* Custom Google account input */}
-            <form onSubmit={(e) => { e.preventDefault(); handleManualGoogleAuth(); }} className="space-y-3 pt-3 border-t">
-              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Or enter another Google Email:
+            <form onSubmit={(e) => { e.preventDefault(); handleManualGoogleAuth(); }} className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground uppercase">Google Email</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@gmail.com"
+                  value={googleEmail}
+                  onChange={(e) => setGoogleEmail(e.target.value)}
+                  className="w-full rounded-xl border-2 border-input bg-cream px-3.5 py-2.5 text-sm font-medium focus:border-leaf focus:outline-none"
+                />
               </div>
-              <input
-                type="email"
-                placeholder="your.email@gmail.com"
-                value={googleEmail}
-                onChange={(e) => setGoogleEmail(e.target.value)}
-                className="w-full rounded-xl border-2 border-input bg-cream px-3.5 py-2.5 text-sm font-medium focus:border-leaf focus:outline-none"
-              />
-              <input
-                type="text"
-                placeholder="Your Name (optional)"
-                value={googleName}
-                onChange={(e) => setGoogleName(e.target.value)}
-                className="w-full rounded-xl border-2 border-input bg-cream px-3.5 py-2.5 text-sm font-medium focus:border-leaf focus:outline-none"
-              />
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground uppercase">Your Full Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter your name"
+                  value={googleName}
+                  onChange={(e) => setGoogleName(e.target.value)}
+                  className="w-full rounded-xl border-2 border-input bg-cream px-3.5 py-2.5 text-sm font-medium focus:border-leaf focus:outline-none"
+                />
+              </div>
               <button
                 type="submit"
-                disabled={loading || !googleEmail.trim()}
+                disabled={loading || !googleEmail.trim() || !googleName.trim()}
                 className="w-full rounded-full bg-[#1a73e8] py-3 text-sm font-bold text-white shadow-md hover:bg-[#1557b0] transition-colors disabled:opacity-50 cursor-pointer"
               >
-                {loading ? "Authenticating..." : "Sign In with this Email"}
+                {loading ? "Registering & Authenticating..." : "Continue with Google"}
               </button>
             </form>
 

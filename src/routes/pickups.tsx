@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Card, CardTitle, Chip, PopButton, SectionNote } from "@/components/sim/ui";
 import { PickupWorkflow } from "@/components/sim/PickupWorkflow";
@@ -6,6 +6,7 @@ import {
   cancelPickup,
   createPickup,
   regenerateWeight,
+  registerCustomer,
   runPickupSimulation,
   setActualWeight,
 } from "@/lib/simulation/engine";
@@ -21,6 +22,8 @@ import {
   getPickups as getBackendPickups,
   createPickup as createBackendPickup,
   runLiveBackendLifecycle,
+  getToken,
+  getMe,
   type ApiCategory,
   type ApiPickup,
 } from "@/lib/api";
@@ -61,6 +64,8 @@ function mapBackendStatusToSim(status: string): Pickup["status"] {
 function PickupsPage() {
   const s = useSim();
   const { isOnline } = useBackend();
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [pickupAddress, setPickupAddress] = useState("102 Metro View, Indiranagar, Bengaluru 560038");
   const [customerId, setCustomerId] = useState(s.customers[0]?.id ?? "");
   const [qty, setQty] = useState<Record<CategoryId, number>>({
     laptop: 1,
@@ -77,11 +82,26 @@ function PickupsPage() {
   const [lifecycleStep, setLifecycleStep] = useState<string | null>(null);
 
   useEffect(() => {
+    const syncUser = () => {
+      if (getToken()) {
+        getMe().then(setCurrentUser).catch(() => setCurrentUser(null));
+      } else {
+        setCurrentUser(null);
+      }
+    };
+    syncUser();
+    window.addEventListener("ecocycle-auth-change", syncUser);
+    return () => window.removeEventListener("ecocycle-auth-change", syncUser);
+  }, []);
+
+  useEffect(() => {
     if (isOnline) {
       getCategories().then(setDbCategories).catch(() => {});
-      getBackendPickups().then(setBackendPickups).catch(() => {});
+      if (getToken()) {
+        getBackendPickups().then(setBackendPickups).catch(() => {});
+      }
     }
-  }, [isOnline]);
+  }, [isOnline, currentUser]);
 
   const refreshBackend = async () => {
     if (!isOnline) return;
@@ -131,14 +151,20 @@ function PickupsPage() {
   const estimate = items.reduce((t, i) => t + i.weightKg * i.qty, 0);
 
   const handleCreatePickup = async () => {
-    if (isOnline) {
+    let activeCustId = customerId;
+    if (currentUser) {
+      const reg = registerCustomer(currentUser.name, currentUser.email, pickupAddress);
+      activeCustId = reg.id;
+    }
+
+    if (isOnline && getToken()) {
       setIsSubmitting(true);
       try {
         let addresses = await getAddresses();
         if (!addresses.length) {
           const newAddr = await createAddress({
-            line1: "Flat 402, Green Meadows",
-            line2: "Indiranagar",
+            line1: pickupAddress,
+            line2: "Metro Area",
             city: "Bengaluru",
             state: "Karnataka",
             pincode: "560038",
@@ -166,7 +192,7 @@ function PickupsPage() {
         const created = await createBackendPickup({
           address_id: targetAddressId,
           items: apiItems,
-          notes: "Scheduled via EcoCycle Dashboard",
+          notes: `Scheduled by ${currentUser?.name || "Customer"}`,
           data_wipe_acknowledged: true,
         });
 
@@ -174,12 +200,12 @@ function PickupsPage() {
         setSelectedId(`PK-${created.id.slice(0, 8)}`);
       } catch (err: any) {
         console.error("Failed to create pickup on backend:", err);
-        createPickup(customerId, items, { auto: false });
+        createPickup(activeCustId, items, { auto: false });
       } finally {
         setIsSubmitting(false);
       }
     } else {
-      createPickup(customerId, items, { auto: false });
+      createPickup(activeCustId, items, { auto: false });
     }
   };
 
@@ -221,20 +247,46 @@ function PickupsPage() {
             badge={<Chip tone="lime">Express Dispatch</Chip>}
           />
 
-          <label className="mb-1.5 block text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
-            Pickup Address &amp; Contact
-          </label>
-          <select
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            className="mb-4 w-full rounded-xl border-2 border-input bg-cream px-3 py-2.5 text-sm font-semibold focus:border-leaf focus:outline-none"
-          >
-            {s.customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} — {c.address}
-              </option>
-            ))}
-          </select>
+          {currentUser ? (
+            <div className="mb-4 space-y-3">
+              <div className="rounded-2xl border border-leaf/30 bg-leaf/10 p-3.5 space-y-0.5">
+                <div className="text-[10px] font-bold text-leaf uppercase tracking-wider">Registered Participant Account</div>
+                <div className="font-bold text-sm text-foreground">{currentUser.name || currentUser.email}</div>
+                <div className="text-xs text-muted-foreground font-mono">{currentUser.email}</div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
+                  Doorstep Pickup Address
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={pickupAddress}
+                  onChange={(e) => setPickupAddress(e.target.value)}
+                  placeholder="e.g. 102 Metro View, Indiranagar, Bengaluru"
+                  className="w-full rounded-xl border-2 border-input bg-cream px-3 py-2.5 text-sm font-semibold focus:border-leaf focus:outline-none"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4 rounded-2xl border-2 border-dashed border-border bg-cream/70 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider">Account Required</span>
+                <Link to="/login" className="text-xs font-bold text-leaf hover:underline">
+                  Sign In / Register →
+                </Link>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Only registered participants can book collections and receive certified green credits.
+              </p>
+              <Link
+                to="/login"
+                className="inline-block w-full rounded-xl bg-leaf py-2.5 text-center text-xs font-bold text-white shadow-sm hover:bg-leaf/90 transition-all"
+              >
+                Create Account / Sign In to Schedule
+              </Link>
+            </div>
+          )}
 
           <label className="mb-2 block text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
             Select E-Waste Items for Collection
@@ -279,10 +331,14 @@ function PickupsPage() {
           <PopButton
             className="mt-4 w-full py-3.5"
             tone="ink"
-            disabled={!items.length || !customerId || isSubmitting}
+            disabled={!items.length || isSubmitting || (!currentUser && !customerId)}
             onClick={handleCreatePickup}
           >
-            {isSubmitting ? "Dispatching..." : "Confirm Doorstep Pickup Request"}
+            {isSubmitting
+              ? "Dispatching Collection..."
+              : !currentUser
+              ? "Register Account to Book"
+              : `Confirm Doorstep Pickup Request (${estimate.toFixed(1)} kg)`}
           </PopButton>
         </Card>
 
@@ -353,7 +409,7 @@ function PickupsPage() {
                       className={`cursor-pointer transition-colors hover:bg-cream/80 ${selected?.id === p.id ? "bg-cream font-bold" : ""}`}
                     >
                       <td className="py-2.5 font-mono text-xs">{p.id}</td>
-                      <td>{s.customers.find((c) => c.id === p.customerId)?.name || "Customer"}</td>
+                      <td>{s.customers.find((c) => c.id === p.customerId)?.name || (currentUser ? currentUser.name : "Registered Participant")}</td>
                       <td>
                         <span className="rounded-full bg-leaf/15 px-2 py-0.5 text-[11px] font-bold text-leaf">
                           {p.status}

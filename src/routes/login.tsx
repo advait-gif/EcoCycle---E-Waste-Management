@@ -13,6 +13,7 @@ import {
   apiFetch,
 } from "@/lib/api";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { registerCustomer } from "@/lib/simulation/engine";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -67,6 +68,9 @@ function LoginPage() {
       const data = await login(identifier, password);
       setCurrentUser(data.user);
       setStoredRole(data.user?.role || "CUSTOMER");
+      if (data.user?.name || identifier) {
+        registerCustomer(data.user?.name || identifier.split("@")[0], identifier);
+      }
       navigate({ to: "/" });
     } catch (err: any) {
       setError(err?.message || "Invalid credentials. Please try again.");
@@ -93,6 +97,7 @@ function LoginPage() {
       const data = await login(identifier, password);
       setCurrentUser(data.user);
       setStoredRole(data.user?.role || role);
+      registerCustomer(name, identifier);
       navigate({ to: "/" });
     } catch (err: any) {
       setError(err?.message || "Registration failed. Please try again.");

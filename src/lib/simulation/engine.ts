@@ -18,6 +18,7 @@ import {
   type Batch,
   type CategoryId,
   type Center,
+  type Customer,
   type InventoryItem,
   type Pickup,
   type PickupItem,
@@ -123,18 +124,9 @@ function buildInitialState(seed: string): SimState {
     activeScenarios: [],
   };
 
-  DEMO_CUSTOMERS.forEach((c, i) => {
-    s.customers.push({
-      id: nextId(s, "CUST"),
-      name: c.name,
-      email: c.name === "Advait Nawathe" ? "advaitnawathe007@gmail.com" : `${c.name.toLowerCase().replace(/\s+/g, ".")}@ecocycle.in`,
-      address: c.address,
-      loc: { x: between(rng, 55, 88), y: between(rng, 15, 82) },
-      points: Math.round(between(rng, 120, 900)),
-      environment: ENVIRONMENT,
-    });
-    if (i === 0) s.currentCustomerId = s.customers[0]!.id;
-  });
+  // Customers start empty. Only accounts that register themselves are added.
+  s.customers = [];
+  s.currentCustomerId = null;
 
   DEMO_AGENTS.forEach((name) => {
     const home = { x: between(rng, 8, 22), y: between(rng, 12, 80) };
@@ -651,6 +643,39 @@ export function setRole(role: Role) {
 export function setCurrentCustomer(id: string) {
   commit((s) => {
     s.currentCustomerId = id;
+  });
+}
+
+export function registerCustomer(name: string, email: string, address = "Bengaluru Urban Metro"): Customer {
+  let cust: Customer | undefined;
+  commit((s) => {
+    const existing = s.customers.find((c) => c.email.toLowerCase() === email.toLowerCase());
+    if (existing) {
+      if (name) existing.name = name;
+      if (address) existing.address = address;
+      s.currentCustomerId = existing.id;
+      cust = existing;
+      return;
+    }
+    cust = {
+      id: nextId(s, "CUST"),
+      name: name || email.split("@")[0] || "Customer",
+      email,
+      address,
+      loc: { x: 72, y: 48 },
+      points: 0,
+      environment: ENVIRONMENT,
+    };
+    s.customers.push(cust);
+    s.currentCustomerId = cust.id;
+  });
+  return cust!;
+}
+
+export function clearRegisteredCustomers() {
+  commit((s) => {
+    s.customers = [];
+    s.currentCustomerId = null;
   });
 }
 
