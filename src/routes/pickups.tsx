@@ -193,9 +193,11 @@ function PickupsPage() {
         (step) => setLifecycleStep(step),
       );
       await refreshBackend();
-      setTimeout(() => setLifecycleStep(null), 3000);
       if (!res.success) {
-        alert("Notice: " + (res.error || "Unable to complete stage"));
+        setLifecycleStep(`Status: ${res.error || "Handover step processing"}`);
+        setTimeout(() => setLifecycleStep(null), 4000);
+      } else {
+        setTimeout(() => setLifecycleStep(null), 3000);
       }
     } else {
       runPickupSimulation(id);

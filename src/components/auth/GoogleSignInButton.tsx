@@ -218,24 +218,6 @@ export function GoogleSignInButton({
                   1-Click Sign In →
                 </span>
               </button>
-
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => handleManualGoogleAuth("pooja.verma@gmail.com", "Pooja Verma")}
-                className="w-full flex items-center gap-3.5 rounded-2xl border border-border bg-cream/70 p-3 text-left transition-all hover:bg-cream hover:border-muted-foreground/30 cursor-pointer"
-              >
-                <div className="grid size-9 place-items-center rounded-full bg-[#34A853] text-white font-bold text-sm">
-                  PV
-                </div>
-                <div className="flex-1 truncate">
-                  <div className="font-semibold text-sm">Pooja Verma</div>
-                  <div className="text-xs text-muted-foreground font-mono">pooja.verma@gmail.com</div>
-                </div>
-                <span className="text-xs font-bold text-muted-foreground">
-                  Select
-                </span>
-              </button>
             </div>
 
             {/* Custom Google account input */}

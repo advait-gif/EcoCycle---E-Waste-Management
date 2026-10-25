@@ -5,7 +5,7 @@ import { useSim, useSimulationLoop } from "@/lib/simulation/react";
 import { useBackend } from "@/hooks/use-backend";
 import { GoogleAuthPromptModal } from "@/components/auth/GoogleAuthPromptModal";
 import { GoogleIcon } from "@/components/auth/GoogleIcon";
-import { getToken, getMe } from "@/lib/api";
+import { getToken, getMe, logout } from "@/lib/api";
 
 const NAV = [
   { to: "/", label: "Dashboard" },
@@ -28,9 +28,20 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    if (getToken()) {
-      getMe().then(setCurrentUser).catch(() => setCurrentUser(null));
-    }
+    const syncUser = () => {
+      if (getToken()) {
+        getMe().then(setCurrentUser).catch(() => setCurrentUser(null));
+      } else {
+        setCurrentUser(null);
+      }
+    };
+    syncUser();
+    window.addEventListener("ecocycle-auth-change", syncUser);
+    window.addEventListener("storage", syncUser);
+    return () => {
+      window.removeEventListener("ecocycle-auth-change", syncUser);
+      window.removeEventListener("storage", syncUser);
+    };
   }, []);
 
   return (
@@ -97,35 +108,50 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
 
               {/* Google Authentication Trigger in Header */}
-              {mounted && !currentUser && !getToken() ? (
-                <button
-                  type="button"
-                  onClick={() => setShowAuthModal(true)}
-                  className="font-display inline-flex items-center gap-2 rounded-full border-2 border-border bg-white px-3.5 py-1.5 text-xs font-bold text-[#3c4043] shadow-sm hover:bg-cream hover:border-leaf transition-all active:translate-y-0.5 cursor-pointer"
-                >
-                  <GoogleIcon className="size-4 shrink-0" />
-                  <span className="hidden sm:inline">Sign In with Google</span>
-                  <span className="sm:hidden">Google</span>
-                </button>
+              {mounted && (currentUser || getToken()) ? (
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/login"
+                    className="font-display inline-flex items-center gap-2 rounded-full border-2 border-border bg-cream px-3 py-1.5 text-xs font-bold text-ink hover:bg-lime/30 transition-all active:translate-y-0.5"
+                  >
+                    {currentUser?.picture ? (
+                      <img
+                        src={currentUser.picture}
+                        alt={currentUser?.name || "Avatar"}
+                        className="size-5 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span>👤</span>
+                    )}
+                    <span className="max-w-[120px] truncate">{currentUser?.name || currentUser?.email || "My Account"}</span>
+                  </Link>
+                  <button
+                    type="button"
+                    title="Sign Out of EcoCycle"
+                    onClick={() => logout()}
+                    className="rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-coral/10 hover:text-coral hover:border-coral transition-colors cursor-pointer"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               ) : (
-                <Link
-                  to="/login"
-                  className="font-display inline-flex items-center gap-2 rounded-full border-2 border-border bg-cream px-3 py-1.5 text-xs font-bold text-ink hover:bg-lime/30 transition-all active:translate-y-0.5"
-                >
-                  {mounted && currentUser?.picture ? (
-                    <img
-                      src={currentUser.picture}
-                      alt={currentUser?.name || "Avatar"}
-                      className="size-5 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span>👤</span>
-                  )}
-                  <span className="max-w-[120px] truncate">{mounted ? (currentUser?.name || currentRole || "Account") : "Sign In"}</span>
-                  <span className="rounded-full bg-ink/10 px-1.5 py-0.2 text-[9px] font-mono uppercase text-muted-foreground">
-                    {mounted ? (currentRole || "CUSTOMER") : "USER"}
-                  </span>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthModal(true)}
+                    className="font-display inline-flex items-center gap-2 rounded-full border-2 border-border bg-white px-3.5 py-1.5 text-xs font-bold text-[#3c4043] shadow-sm hover:bg-cream hover:border-leaf transition-all active:translate-y-0.5 cursor-pointer"
+                  >
+                    <GoogleIcon className="size-4 shrink-0" />
+                    <span className="hidden sm:inline">Sign In with Google</span>
+                    <span className="sm:hidden">Google</span>
+                  </button>
+                  <Link
+                    to="/login"
+                    className="rounded-full border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-cream transition-all"
+                  >
+                    Sign In
+                  </Link>
+                </div>
               )}
             </div>
           </div>

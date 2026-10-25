@@ -89,13 +89,12 @@ export const SCENARIOS = [
 ] as const;
 
 export const DEMO_CUSTOMERS = [
-  { name: "Aarav Sharma", address: "12 Demo Lane, Sim Nagar" },
-  { name: "Priya Patil", address: "44 Example Road, Sim Nagar" },
-  { name: "Rahul Deshmukh", address: "7 Fictional Street, Demo Park" },
-  { name: "Sneha Joshi", address: "91 Sample Avenue, Demo Park" },
-  { name: "Aditya Kulkarni", address: "3 Mock Colony, Sim Nagar" },
+  { name: "Advait Nawathe", address: "102 Metro View, Indiranagar, Bengaluru 560038" },
+  { name: "Kiran Rao", address: "44 Residency Road, Richmond Town, Bengaluru 560025" },
+  { name: "Vikram Mehta", address: "7 14th Main, HSR Layout Sector 4, Bengaluru 560102" },
+  { name: "Ananya Deshpande", address: "91 5th Cross, Koramangala 4th Block, Bengaluru 560034" },
 ];
 
-export const DEMO_AGENTS = ["EcoAgent 01", "EcoAgent 02", "EcoAgent 03", "EcoAgent 04"];
-export const DEMO_CENTERS = ["EcoCycle Center A", "EcoCycle Center B", "EcoCycle Center C"];
-export const DEMO_RECYCLERS = ["GreenTech Recycler", "EcoMetal Processing", "RenewCycle Facility"];
+export const DEMO_AGENTS = ["EcoAgent 01 (Indiranagar)", "EcoAgent 02 (Whitefield)", "EcoAgent 03 (HSR Layout)", "EcoAgent 04 (Peenya)"];
+export const DEMO_CENTERS = ["EcoCycle Hub East (Whitefield)", "EcoCycle Hub Central (Indiranagar)", "EcoCycle Hub West (Peenya)"];
+export const DEMO_RECYCLERS = ["GreenTech Recyclers (Peenya)", "EcoMetal Recovery Ltd", "RenewCycle Advanced Facility"];

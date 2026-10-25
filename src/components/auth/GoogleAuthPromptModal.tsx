@@ -130,52 +130,6 @@ export function GoogleAuthPromptModal({ forceOpen = false, onClose }: GoogleAuth
           </div>
         </div>
 
-        {/* Demo Fast Access Option */}
-        <div className="mt-6 space-y-3">
-          <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <span className="relative bg-card px-3 text-[11px] font-semibold text-muted-foreground uppercase">
-              Or Instant Role Access
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              disabled={!!roleLoading}
-              onClick={() => handleQuickRole("customer")}
-              className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-cream p-2.5 text-center hover:bg-lime/20 hover:border-lime transition-all active:scale-95 disabled:opacity-50"
-            >
-              <span className="text-xl">👤</span>
-              <span className="text-xs font-bold">Customer</span>
-              <span className="text-[10px] text-muted-foreground">Pooja</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={!!roleLoading}
-              onClick={() => handleQuickRole("collector")}
-              className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-cream p-2.5 text-center hover:bg-lime/20 hover:border-lime transition-all active:scale-95 disabled:opacity-50"
-            >
-              <span className="text-xl">🛵</span>
-              <span className="text-xs font-bold">Collector</span>
-              <span className="text-[10px] text-muted-foreground">Rajesh</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={!!roleLoading}
-              onClick={() => handleQuickRole("recycler")}
-              className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-cream p-2.5 text-center hover:bg-lime/20 hover:border-lime transition-all active:scale-95 disabled:opacity-50"
-            >
-              <span className="text-xl">🏭</span>
-              <span className="text-xs font-bold">Recycler</span>
-              <span className="text-[10px] text-muted-foreground">Facility</span>
-            </button>
-          </div>
-        </div>
 
         {/* Footer: Explore as guest */}
         <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-xs">

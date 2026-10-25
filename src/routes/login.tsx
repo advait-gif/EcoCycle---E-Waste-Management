@@ -6,6 +6,7 @@ import {
   login,
   getToken,
   setToken,
+  logout,
   getMe,
   DEMO_CREDENTIALS,
   setStoredRole,
@@ -42,9 +43,20 @@ function LoginPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
-    if (isOnline && getToken()) {
-      getMe().then(setCurrentUser).catch(() => setCurrentUser(null));
-    }
+    const syncUser = () => {
+      if (getToken()) {
+        getMe().then(setCurrentUser).catch(() => setCurrentUser(null));
+      } else {
+        setCurrentUser(null);
+      }
+    };
+    syncUser();
+    window.addEventListener("ecocycle-auth-change", syncUser);
+    window.addEventListener("storage", syncUser);
+    return () => {
+      window.removeEventListener("ecocycle-auth-change", syncUser);
+      window.removeEventListener("storage", syncUser);
+    };
   }, [isOnline]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -89,23 +101,8 @@ function LoginPage() {
     }
   };
 
-  const handleQuickDemo = async (demoKey: "customer" | "collector" | "recycler" | "admin") => {
-    setError(null);
-    setLoading(true);
-    try {
-      await switchRole(demoKey);
-      const user = await getMe();
-      setCurrentUser(user);
-      navigate({ to: "/" });
-    } catch (err: any) {
-      setError(err?.message || "Quick login failed.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleLogout = () => {
-    setToken(null);
+    logout();
     setCurrentUser(null);
   };
 
@@ -249,7 +246,7 @@ function LoginPage() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Pooja Verma"
+                    placeholder="e.g. Advait Nawathe"
                     className="w-full rounded-xl border-2 border-input bg-cream px-3 py-2.5 text-sm font-medium focus:border-leaf focus:outline-none"
                   />
                 </div>
@@ -260,7 +257,7 @@ function LoginPage() {
                     required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="e.g. pooja@example.com"
+                    placeholder="e.g. advaitnawathe007@gmail.com"
                     className="w-full rounded-xl border-2 border-input bg-cream px-3 py-2.5 text-sm font-medium focus:border-leaf focus:outline-none"
                   />
                 </div>
@@ -298,54 +295,6 @@ function LoginPage() {
                 </PopButton>
               </form>
             )}
-          </Card>
-
-          <Card>
-            <CardTitle
-              title="Instant Role Switcher"
-              badge={<Chip tone="sun">Active Roles</Chip>}
-            />
-            <p className="mb-4 text-xs text-muted-foreground">
-              Switch between authenticated marketplace roles in real time:
-            </p>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              <button
-                type="button"
-                onClick={() => handleQuickDemo("customer")}
-                className="flex flex-col items-center gap-1 rounded-2xl bg-cream p-3 text-center transition-all hover:bg-lime/20"
-              >
-                <span className="text-xl">👤</span>
-                <span className="text-xs font-bold">Customer</span>
-                <span className="font-mono text-[10px] text-muted-foreground">Pooja</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo("collector")}
-                className="flex flex-col items-center gap-1 rounded-2xl bg-cream p-3 text-center transition-all hover:bg-lime/20"
-              >
-                <span className="text-xl">🛵</span>
-                <span className="text-xs font-bold">Collector</span>
-                <span className="font-mono text-[10px] text-muted-foreground">Rajesh</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo("recycler")}
-                className="flex flex-col items-center gap-1 rounded-2xl bg-cream p-3 text-center transition-all hover:bg-lime/20"
-              >
-                <span className="text-xl">🏭</span>
-                <span className="text-xs font-bold">Recycler</span>
-                <span className="font-mono text-[10px] text-muted-foreground">GreenEarth</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo("admin")}
-                className="flex flex-col items-center gap-1 rounded-2xl bg-cream p-3 text-center transition-all hover:bg-lime/20"
-              >
-                <span className="text-xl">⚙️</span>
-                <span className="text-xs font-bold">Admin</span>
-                <span className="font-mono text-[10px] text-muted-foreground">Ops Team</span>
-              </button>
-            </div>
           </Card>
         </>
       )}

@@ -5,27 +5,18 @@ import {
   getToken,
   getStoredRole,
   setStoredRole,
+  logout,
   DEMO_CREDENTIALS,
 } from "@/lib/api";
 
 export function useBackend() {
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
-  const [currentRole, setCurrentRole] = useState<string>(getStoredRole());
+  const [currentRole, setCurrentRole] = useState<string>(getToken() ? getStoredRole() : "");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const checkStatus = useCallback(async () => {
     const res = await checkBackendHealth();
     setIsOnline(res.ok);
-    if (res.ok && !getToken()) {
-      setIsAuthenticating(true);
-      try {
-        await ensureDemoLogin("customer");
-      } catch (err) {
-        console.warn("Auto-login error:", err);
-      } finally {
-        setIsAuthenticating(false);
-      }
-    }
   }, []);
 
   useEffect(() => {
@@ -33,6 +24,19 @@ export function useBackend() {
     const interval = setInterval(checkStatus, 15000);
     return () => clearInterval(interval);
   }, [checkStatus]);
+
+  useEffect(() => {
+    const onAuthChange = () => {
+      const token = getToken();
+      setCurrentRole(token ? getStoredRole() : "");
+    };
+    window.addEventListener("ecocycle-auth-change", onAuthChange);
+    window.addEventListener("storage", onAuthChange);
+    return () => {
+      window.removeEventListener("ecocycle-auth-change", onAuthChange);
+      window.removeEventListener("storage", onAuthChange);
+    };
+  }, []);
 
   const switchRole = async (role: "customer" | "collector" | "recycler" | "admin") => {
     setIsAuthenticating(true);
@@ -48,11 +52,17 @@ export function useBackend() {
     }
   };
 
+  const logoutUser = () => {
+    logout();
+    setCurrentRole("");
+  };
+
   return {
     isOnline: !!isOnline,
     isLoading: isOnline === null || isAuthenticating,
     currentRole,
     switchRole,
+    logoutUser,
     checkStatus,
   };
 }

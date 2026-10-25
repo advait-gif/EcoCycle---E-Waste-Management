@@ -127,7 +127,7 @@ function buildInitialState(seed: string): SimState {
     s.customers.push({
       id: nextId(s, "CUST"),
       name: c.name,
-      email: `${c.name.split(" ")[0]!.toLowerCase()}@example.demo`,
+      email: c.name === "Advait Nawathe" ? "advaitnawathe007@gmail.com" : `${c.name.toLowerCase().replace(/\s+/g, ".")}@ecocycle.in`,
       address: c.address,
       loc: { x: between(rng, 55, 88), y: between(rng, 15, 82) },
       points: Math.round(between(rng, 120, 900)),

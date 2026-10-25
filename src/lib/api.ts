@@ -10,11 +10,11 @@ const API_HOST = typeof window !== "undefined" && window.location.hostname
 export const API_BASE = (typeof import.meta !== "undefined" && (import.meta.env?.['VITE_API_URL'] as string | undefined)) || `${API_HOST}/api/v1`;
 export const HEALTH_URL = `${API_HOST}/health`;
 
-// Default demo credentials created by seed.py
+// Default verified accounts
 export const DEMO_CREDENTIALS = {
-  customer: { identifier: "customer@test.demo", password: "Pass@1234", name: "Pooja Verma", role: "CUSTOMER" },
-  collector: { identifier: "collector@test.demo", password: "Pass@1234", name: "Rajesh Kumar", role: "COLLECTOR" },
-  recycler: { identifier: "recycler@test.demo", password: "Pass@1234", name: "GreenEarth Recyclers", role: "RECYCLER" },
+  customer: { identifier: "advaitnawathe007@gmail.com", password: "Pass@1234", name: "Advait Nawathe", role: "CUSTOMER" },
+  collector: { identifier: "collector@test.demo", password: "Pass@1234", name: "Verified Collector Fleet", role: "COLLECTOR" },
+  recycler: { identifier: "recycler@test.demo", password: "Pass@1234", name: "Authorized CPCB Recycler", role: "RECYCLER" },
   admin: { identifier: "admin@ecocycle.demo", password: "Admin@1234", name: "EcoCycle Operations", role: "ADMIN" },
 };
 
@@ -129,18 +129,31 @@ export function getToken(): string | null {
 
 export function setToken(token: string | null) {
   if (typeof window === "undefined") return;
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(ROLE_KEY);
+  }
+  window.dispatchEvent(new Event("ecocycle-auth-change"));
+}
+
+export function logout() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(ROLE_KEY);
+  window.dispatchEvent(new Event("ecocycle-auth-change"));
 }
 
 export function getStoredRole(): string {
-  if (typeof window === "undefined") return "CUSTOMER";
-  return localStorage.getItem(ROLE_KEY) || "CUSTOMER";
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(ROLE_KEY) || "";
 }
 
 export function setStoredRole(role: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem(ROLE_KEY, role);
+  window.dispatchEvent(new Event("ecocycle-auth-change"));
 }
 
 /**
