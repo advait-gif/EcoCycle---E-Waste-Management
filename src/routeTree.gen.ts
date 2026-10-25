@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as CentersRouteImport } from './routes/centers'
 import { Route as ControlRouteImport } from './routes/control'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PickupsRouteImport } from './routes/pickups'
 import { Route as RecyclingRouteImport } from './routes/recycling'
 import { Route as RewardsRouteImport } from './routes/rewards'
@@ -36,6 +37,11 @@ const CentersRoute = CentersRouteImport.update({
 const ControlRoute = ControlRouteImport.update({
   id: '/control',
   path: '/control',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PickupsRoute = PickupsRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/agents': typeof AgentsRoute
   '/centers': typeof CentersRoute
   '/control': typeof ControlRoute
+  '/login': typeof LoginRoute
   '/pickups': typeof PickupsRoute
   '/recycling': typeof RecyclingRoute
   '/rewards': typeof RewardsRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/agents': typeof AgentsRoute
   '/centers': typeof CentersRoute
   '/control': typeof ControlRoute
+  '/login': typeof LoginRoute
   '/pickups': typeof PickupsRoute
   '/recycling': typeof RecyclingRoute
   '/rewards': typeof RewardsRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/agents': typeof AgentsRoute
   '/centers': typeof CentersRoute
   '/control': typeof ControlRoute
+  '/login': typeof LoginRoute
   '/pickups': typeof PickupsRoute
   '/recycling': typeof RecyclingRoute
   '/rewards': typeof RewardsRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/centers'
     | '/control'
+    | '/login'
     | '/pickups'
     | '/recycling'
     | '/rewards'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/centers'
     | '/control'
+    | '/login'
     | '/pickups'
     | '/recycling'
     | '/rewards'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/centers'
     | '/control'
+    | '/login'
     | '/pickups'
     | '/recycling'
     | '/rewards'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   AgentsRoute: typeof AgentsRoute
   CentersRoute: typeof CentersRoute
   ControlRoute: typeof ControlRoute
+  LoginRoute: typeof LoginRoute
   PickupsRoute: typeof PickupsRoute
   RecyclingRoute: typeof RecyclingRoute
   RewardsRoute: typeof RewardsRoute
@@ -163,6 +176,13 @@ declare module '@tanstack/react-router' {
       path: '/control'
       fullPath: '/control'
       preLoaderRoute: typeof ControlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pickups': {
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgentsRoute: AgentsRoute,
   CentersRoute: CentersRoute,
   ControlRoute: ControlRoute,
+  LoginRoute: LoginRoute,
   PickupsRoute: PickupsRoute,
   RecyclingRoute: RecyclingRoute,
   RewardsRoute: RewardsRoute,

@@ -13,11 +13,12 @@ const NAV = [
   { to: "/recycling", label: "Recycling" },
   { to: "/rewards", label: "Rewards" },
   { to: "/control", label: "Control" },
+  { to: "/login", label: "Sign In" },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const s = useSim();
-  const { isOnline } = useBackend();
+  const { isOnline, currentRole } = useBackend();
   useSimulationLoop();
 
   return (
@@ -84,6 +85,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               Launch Demo
             </button>
+            <Link
+              to="/login"
+              className="font-display inline-flex items-center gap-1.5 rounded-full border-2 border-border bg-cream px-3 py-2 text-xs font-bold text-ink hover:bg-lime/30 transition-all active:translate-y-0.5"
+            >
+              <span>👤</span>
+              <span className="hidden sm:inline">{currentRole || "Sign In"}</span>
+            </Link>
           </div>
         </div>
       </header>
