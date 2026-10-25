@@ -9,19 +9,29 @@ import { useSim } from "@/lib/simulation/react";
 import { kg, num } from "@/lib/simulation/format";
 import { REWARD_PRODUCTS } from "@/lib/simulation/config";
 
+import { useState, useEffect } from "react";
+import { useBackend } from "@/hooks/use-backend";
+import {
+  getPickups as getBackendPickups,
+  getAnalyticsOverview,
+  runLiveBackendLifecycle,
+  type ApiOverviewStats,
+  type ApiPickup,
+} from "@/lib/api";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "EcoCycle — Simulated E-Waste Operations Dashboard" },
+      { title: "EcoCycle — E-Waste Operations Dashboard" },
       {
         name: "description",
         content:
-          "Watch a full simulated e-waste lifecycle: pickup request, agent movement, sorting, recycling, certificate and reward points. Demo data only.",
+          "Full e-waste lifecycle: pickup request, collector movement, sorting, recycling, certificate and reward points.",
       },
-      { property: "og:title", content: "EcoCycle — Simulated E-Waste Operations Dashboard" },
+      { property: "og:title", content: "EcoCycle — E-Waste Operations Dashboard" },
       {
         property: "og:description",
-        content: "A reproducible e-waste collection and recycling simulator. Every figure is simulated.",
+        content: "E-waste collection and recycling operations. Live backend synced.",
       },
     ],
   }),
@@ -30,18 +40,54 @@ export const Route = createFileRoute("/")({
 
 function Dashboard() {
   const s = useSim();
+  const { isOnline } = useBackend();
   const t = totals(s);
   const pickup = activePickup(s);
   const latestBatch = s.batches[0];
   const customer = s.customers.find((c) => c.id === s.currentCustomerId) ?? s.customers[0];
   const latestCert = s.certificates[0];
 
+  const [backendStats, setBackendStats] = useState<ApiOverviewStats | null>(null);
+  const [backendPickups, setBackendPickups] = useState<ApiPickup[]>([]);
+  const [lifecycleStep, setLifecycleStep] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOnline) {
+      getAnalyticsOverview().then(setBackendStats).catch(console.warn);
+      getBackendPickups().then(setBackendPickups).catch(console.warn);
+    }
+  }, [isOnline]);
+
+  const handleRunSimulation = async () => {
+    if (isOnline && backendPickups.length > 0) {
+      const targetPickup = backendPickups.find((p) => p.status !== "COMPLETED") || backendPickups[0];
+      setLifecycleStep("Starting live backend lifecycle...");
+      const res = await runLiveBackendLifecycle(
+        targetPickup.id,
+        targetPickup.estimated_weight_g || 4800,
+        (step) => setLifecycleStep(step),
+      );
+      getAnalyticsOverview().then(setBackendStats).catch(console.warn);
+      getBackendPickups().then(setBackendPickups).catch(console.warn);
+      setTimeout(() => setLifecycleStep(null), 3500);
+      if (!res.success && pickup) {
+        runPickupSimulation(pickup.id);
+      }
+    } else if (pickup) {
+      runPickupSimulation(pickup.id);
+    }
+  };
+
+  const displayPickupsCount = isOnline && backendStats ? backendStats.total_pickups : t.pickups;
+  const displayCollectedKg = isOnline && backendStats ? backendStats.total_weight_kg : t.collectedKg;
+
   return (
     <div className="space-y-6">
       <section className="grid gap-6 lg:grid-cols-12">
         <div className="lg:col-span-7">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-lime/40 px-3 py-1.5 text-xs font-semibold">
-            <span className="size-2 rounded-full bg-leaf" /> Simulation {s.settings.running ? "running" : "paused"} ·{" "}
+            <span className={`size-2 rounded-full ${isOnline ? "bg-leaf animate-pulse" : "bg-leaf"}`} />
+            {isOnline ? "⚡ Live Backend Connected · SQLite/PostgreSQL" : `Simulation ${s.settings.running ? "running" : "paused"}`} ·{" "}
             {s.activeScenarios.length} active scenario{s.activeScenarios.length === 1 ? "" : "s"}
           </div>
           <h1 className="font-display text-[clamp(2.6rem,6vw,4.75rem)] leading-[0.92] font-bold">
@@ -53,14 +99,14 @@ function Dashboard() {
           </h1>
           <p className="mt-5 max-w-md text-lg text-muted-foreground">
             A full e-waste lifecycle simulator — from pickup request to recovered material, reward points and
-            certificate. Every step is a simulated, reproducible demo.
+            certificate. {isOnline ? "Connected directly to your FastAPI backend." : "Every step is a simulated, reproducible demo."}
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <PopButton
               tone="ink"
               className="px-6 py-4 text-base"
-              onClick={() => pickup && runPickupSimulation(pickup.id)}
-              disabled={!pickup}
+              onClick={handleRunSimulation}
+              disabled={!pickup && (!isOnline || !backendPickups.length)}
             >
               ▶ Run Pickup Simulation
             </PopButton>
@@ -68,20 +114,25 @@ function Dashboard() {
               🎲 Generate Scenario
             </PopButton>
           </div>
+          {lifecycleStep ? (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-sun/40 px-3.5 py-2 text-xs font-semibold text-sun-foreground animate-pulse">
+              <span className="size-2 rounded-full bg-sun" /> {lifecycleStep}
+            </div>
+          ) : null}
           <div className="mt-8 grid max-w-lg grid-cols-3 gap-4">
             <div>
-              <div className="font-display text-3xl font-bold">{num(t.pickups)}</div>
-              <div className="text-xs font-medium text-muted-foreground">Simulated Pickups</div>
+              <div className="font-display text-3xl font-bold">{num(displayPickupsCount)}</div>
+              <div className="text-xs font-medium text-muted-foreground">Pickups</div>
             </div>
             <div>
               <div className="font-display text-3xl font-bold">
-                {num(t.collectedKg)} <span className="text-base text-muted-foreground">kg</span>
+                {num(displayCollectedKg)} <span className="text-base text-muted-foreground">kg</span>
               </div>
-              <div className="text-xs font-medium text-muted-foreground">Simulated E-Waste</div>
+              <div className="text-xs font-medium text-muted-foreground">E-Waste Weight</div>
             </div>
             <div>
               <div className="font-display text-3xl font-bold text-leaf">{t.recoveryPct}%</div>
-              <div className="text-xs font-medium text-muted-foreground">Simulated Recovery</div>
+              <div className="text-xs font-medium text-muted-foreground">Recovery Rate</div>
             </div>
           </div>
         </div>

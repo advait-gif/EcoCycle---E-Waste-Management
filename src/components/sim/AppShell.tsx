@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { launchDemo } from "@/lib/simulation/engine";
 import { useSim, useSimulationLoop } from "@/lib/simulation/react";
 import { simClock } from "@/lib/simulation/format";
+import { useBackend } from "@/hooks/use-backend";
 
 const NAV = [
   { to: "/", label: "Dashboard" },
@@ -16,20 +17,29 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const s = useSim();
+  const { isOnline } = useBackend();
   useSimulationLoop();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="bg-ink text-ink-foreground">
         <div className="mx-auto flex max-w-[1440px] items-center gap-3 px-6 py-2.5 text-[13px]">
-          <span className="font-display inline-flex items-center gap-1.5 rounded-full bg-lime px-2.5 py-1 text-[11px] font-bold tracking-wide text-lime-foreground">
-            🧪 SIMULATION MODE
-          </span>
+          {isOnline ? (
+            <span className="font-display inline-flex items-center gap-1.5 rounded-full bg-leaf px-2.5 py-1 text-[11px] font-bold tracking-wide text-leaf-foreground">
+              ⚡ BACKEND SYNCED
+            </span>
+          ) : (
+            <span className="font-display inline-flex items-center gap-1.5 rounded-full bg-lime px-2.5 py-1 text-[11px] font-bold tracking-wide text-lime-foreground">
+              🧪 SIMULATION MODE
+            </span>
+          )}
           <span className="opacity-70">
-            All data, pickups, recycling and rewards are simulated. No real-world operations occur.
+            {isOnline
+              ? "Live connected to Python FastAPI backend (http://localhost:8000). Real DB records & verified rewards active."
+              : "All data, pickups, recycling and rewards are simulated. No real-world operations occur."}
           </span>
           <span className="ml-auto hidden font-mono text-[11px] opacity-50 sm:inline">
-            SIM-ENV · seed {s.settings.seed}
+            {isOnline ? "FASTAPI · :8000" : `SIM-ENV · seed ${s.settings.seed}`}
           </span>
         </div>
       </div>

@@ -1,0 +1,14 @@
+﻿__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+ecocycle.db
+uploads/
+*.db
+*.db-shm
+*.db-wal
+.pytest_cache/
+htmlcov/
+.coverage
