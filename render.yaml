@@ -1,0 +1,24 @@
+services:
+  # EcoCycle FastAPI Backend Service
+  - type: web
+    name: ecocycle-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.2
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: API_V1_STR
+        value: /api/v1
+      # Optional: set CORS_ORIGINS if using a custom domain (e.g., https://my-ecocycle.com)
+      - key: CORS_ORIGINS
+        value: ""

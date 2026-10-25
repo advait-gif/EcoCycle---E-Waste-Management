@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+    CORS_ORIGINS: str = ""
 
     # Security
     SECRET_KEY: str = secrets.token_urlsafe(64)

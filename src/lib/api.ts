@@ -8,7 +8,9 @@ const API_HOST = typeof window !== "undefined" && window.location.hostname
   : "http://localhost:8000";
 
 export const API_BASE = (typeof import.meta !== "undefined" && (import.meta.env?.['VITE_API_URL'] as string | undefined)) || `${API_HOST}/api/v1`;
-export const HEALTH_URL = `${API_HOST}/health`;
+export const HEALTH_URL = (typeof import.meta !== "undefined" && (import.meta.env?.['VITE_API_URL'] as string | undefined))
+  ? (import.meta.env['VITE_API_URL'] as string).replace(/\/api\/v1\/?$/, "") + "/health"
+  : `${API_HOST}/health`;
 
 // System operations accounts (for field dispatch and recycling intake)
 export const DEMO_CREDENTIALS = {
