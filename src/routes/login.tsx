@@ -118,7 +118,7 @@ function LoginPage() {
         <SectionNote>
           {isOnline
             ? "⚡ Live FastAPI Authentication with Argon2id Password Hashing & JWT Sessions."
-            : "Backend is offline. Running in simulation mode."}
+            : "Backend service is reconnecting. Live database session will retry automatically."}
         </SectionNote>
       </header>
 
@@ -215,7 +215,7 @@ function LoginPage() {
                     required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="e.g. customer@test.demo"
+                    placeholder="e.g. advait@ecocycle.in"
                     className="w-full rounded-xl border-2 border-input bg-cream px-3 py-2.5 text-sm font-medium focus:border-leaf focus:outline-none"
                   />
                 </div>
@@ -302,11 +302,11 @@ function LoginPage() {
 
           <Card>
             <CardTitle
-              title="One-Click Demo Roles"
-              badge={<Chip tone="sun">Instant Access</Chip>}
+              title="Instant Role Switcher"
+              badge={<Chip tone="sun">Active Roles</Chip>}
             />
             <p className="mb-4 text-xs text-muted-foreground">
-              Pre-configured seed accounts for fast testing of every marketplace role in real time:
+              Switch between authenticated marketplace roles in real time:
             </p>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
               <button

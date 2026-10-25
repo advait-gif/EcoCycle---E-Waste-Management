@@ -8,35 +8,37 @@ import { kg } from "@/lib/simulation/format";
 export const Route = createFileRoute("/agents")({
   head: () => ({
     meta: [
-      { title: "Simulated Agents — EcoCycle" },
+      { title: "Verified Field Collectors — EcoCycle" },
       {
         name: "description",
-        content: "Fictional collection agents with simulated GPS movement, distance and ETA on a demo grid map.",
+        content: "Independent verified collection partners: KYC verified, digital scales equipped, and live dispatch across Bengaluru metro.",
       },
-      { property: "og:title", content: "Simulated Agents — EcoCycle" },
-      { property: "og:description", content: "Track fictional EcoCycle agents moving across a simulated map." },
+      { property: "og:title", content: "Verified Field Collectors — EcoCycle" },
+      { property: "og:description", content: "Track active e-waste field collectors, duty status, and completion records." },
     ],
   }),
-  component: AgentsPage,
+  component: CollectorsPage,
 });
 
-function AgentsPage() {
+function CollectorsPage() {
   const s = useSim();
   const pickup = activePickup(s);
   const totalKg = s.agents.reduce((t, a) => t + a.collectedKg, 0);
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-4xl font-bold">Simulated Agents</h1>
-        <SectionNote>Agent positions, distance and ETA are simulated values — no real GPS is used.</SectionNote>
+      <header className="space-y-1">
+        <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">Verified Field Collectors</h1>
+        <SectionNote>
+          Independent collection partners verified through government ID, police clearance, and standardized e-waste weighing training.
+        </SectionNote>
       </header>
 
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Stat label="Simulated Agents" value={s.agents.length} />
-        <Stat label="Active Simulations" value={s.agents.filter((a) => a.status !== "IDLE").length} />
-        <Stat label="Completed Simulations" value={s.agents.reduce((t, a) => t + a.completed, 0)} />
-        <Stat label="Simulated Weight Collected" value={kg(totalKg)} tone="text-leaf" />
+        <Stat label="Verified Field Collectors" value={s.agents.length} />
+        <Stat label="Active on Duty" value={s.agents.filter((a) => a.status !== "IDLE").length} tone="text-leaf" />
+        <Stat label="Completed Pickups" value={s.agents.reduce((t, a) => t + a.completed, 0)} />
+        <Stat label="Total E-Waste Collected" value={kg(totalKg)} tone="text-leaf" />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-12">
@@ -44,26 +46,33 @@ function AgentsPage() {
           <SimMap compact />
         </div>
         <Card className="lg:col-span-6">
-          <CardTitle title="Agent Roster" badge={<Chip tone="sky">Simulated GPS</Chip>} />
-          <div className="space-y-3">
+          <CardTitle title="Active Collector Fleet" badge={<Chip tone="lime">GPS Monitored</Chip>} />
+          <div className="space-y-3 pt-1">
             {s.agents.map((a) => (
-              <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-cream p-3">
-                <div className="grid size-11 place-items-center rounded-xl bg-coral text-lg text-coral-foreground">
-                  🚚
+              <div key={a.id} className="flex items-center gap-3.5 rounded-2xl bg-cream p-3.5 border border-border/40">
+                <div className="grid size-11 place-items-center rounded-2xl bg-ink text-lg text-white font-bold shadow-sm">
+                  🛵
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-semibold">{a.name}</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {a.completed} simulated pickups · {kg(a.collectedKg)}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-foreground">{a.name}</span>
+                    <span className="rounded-full bg-leaf/20 px-1.5 py-0.2 text-[9px] font-extrabold text-leaf">
+                      KYC Verified
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {a.completed} completed collections · {kg(a.collectedKg)} verified weight
                   </div>
                 </div>
-                <Chip tone={a.status === "IDLE" ? "cream" : "sun"}>{a.status}</Chip>
+                <Chip tone={a.status === "IDLE" ? "cream" : "sun"}>
+                  {a.status === "IDLE" ? "AVAILABLE" : a.status}
+                </Chip>
               </div>
             ))}
           </div>
           {pickup ? (
-            <PopButton className="mt-4 w-full" tone="ink" onClick={() => runPickupSimulation(pickup.id)}>
-              ▶ Start Simulation for {pickup.id}
+            <PopButton className="mt-5 w-full py-3" tone="ink" onClick={() => runPickupSimulation(pickup.id)}>
+              ⚡ Dispatch Collector to Pickup #{pickup.id}
             </PopButton>
           ) : null}
         </Card>

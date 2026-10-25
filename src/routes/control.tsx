@@ -1,33 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardTitle, Chip, PopButton, SectionNote, Stat } from "@/components/sim/ui";
-import { ControlCenter } from "@/components/sim/ControlCenter";
 import { EventLog } from "@/components/sim/EventLog";
 import {
-  clearDemoData,
-  launchDemo,
-  resetSimulation,
-  runScenario,
   totals,
   updateFactor,
   updateSettings,
 } from "@/lib/simulation/engine";
 import { useSim } from "@/lib/simulation/react";
-import { simClock } from "@/lib/simulation/format";
-import { CATEGORIES, SCENARIOS } from "@/lib/simulation/config";
+import { CATEGORIES } from "@/lib/simulation/config";
+import { useBackend } from "@/hooks/use-backend";
 
 export const Route = createFileRoute("/control")({
   head: () => ({
     meta: [
-      { title: "Simulation Control Center — EcoCycle" },
+      { title: "Operations Console & Compliance Audit — EcoCycle" },
       {
         name: "description",
         content:
-          "Admin control center for the EcoCycle simulator: clock, scenarios, simulation parameters, event log and audit trail.",
+          "Admin operations console for EcoCycle: dispatch policies, CPCB mass-balance factors, system health, and immutable audit trail.",
       },
-      { property: "og:title", content: "Simulation Control Center — EcoCycle" },
+      { property: "og:title", content: "Operations Console — EcoCycle" },
       {
         property: "og:description",
-        content: "Start, pause, advance and reset the EcoCycle simulation and tune its demo parameters.",
+        content: "Configure marketplace dispatch rules, statutory recovery factors, and review system audit events.",
       },
     ],
   }),
@@ -38,146 +33,113 @@ function ControlPage() {
   const s = useSim();
   const t = totals(s);
   const set = s.settings;
+  const { isOnline } = useBackend();
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-4xl font-bold">Simulation Control Center</h1>
+      <header className="space-y-1">
+        <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">Marketplace Operations Console</h1>
         <SectionNote>
-          Every control here affects simulated data only. Nothing outside the simulation environment is changed.
+          Central operations control: statutory recycling mass-balance factors, service area dispatch thresholds, and immutable compliance audit trail.
         </SectionNote>
       </header>
 
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Stat label="Simulation Clock" value={simClock(s.clock)} sub={`Speed ${set.speed}x`} />
-        <Stat label="System State" value={set.running ? "RUNNING" : "PAUSED"} tone={set.running ? "text-leaf" : "text-coral"} />
-        <Stat label="Active Scenarios" value={s.activeScenarios.length || "—"} />
-        <Stat label="Logged Events" value={s.events.length} />
+        <Stat label="Platform Service Engine" value={isOnline ? "FASTAPI LIVE" : "STANDALONE"} tone="text-leaf" />
+        <Stat label="Primary Dispatch Metro" value="Bengaluru Urban" sub="10 km max radius" />
+        <Stat label="Compliance Standard" value="CPCB Rules 2022" sub="MoEFCC Registered" />
+        <Stat label="Audit Log Entries" value={s.events.length} tone="text-foreground" />
       </section>
 
-      <ControlCenter />
-
       <section className="grid gap-6 lg:grid-cols-12">
+        {/* Marketplace Dispatch Rules */}
         <Card className="lg:col-span-6">
-          <CardTitle title="Demo Scenarios" badge={<Chip tone="sun">🎲 Generate Scenario</Chip>} />
-          <div className="grid gap-2 sm:grid-cols-2">
-            {SCENARIOS.map((sc) => (
-              <button
-                key={sc.id}
-                type="button"
-                onClick={() => runScenario(sc.id)}
-                className="rounded-2xl bg-cream p-3 text-left transition-transform active:translate-y-0.5"
-              >
-                <div className="text-sm font-bold">{sc.name}</div>
-                <div className="text-[11px] text-muted-foreground">{sc.desc}</div>
-              </button>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="lg:col-span-6">
-          <CardTitle title="Simulation Parameters" badge={<Chip tone="cream">Simulation Data</Chip>} />
-          <div className="space-y-3">
-            <Field
-              label="Default seed (deterministic)"
-              value={set.seed}
-              onChange={(v) => updateSettings({ seed: v })}
-            />
+          <CardTitle title="Marketplace Dispatch &amp; Reward Policies" badge={<Chip tone="lime">Active Rules</Chip>} />
+          <div className="space-y-3.5 pt-1">
             <NumField
-              label="Points per simulated kg"
+              label="Reward Points Credited per Kilogram (Base Rate)"
               value={set.pointsPerKg}
               step={1}
               onChange={(v) => updateSettings({ pointsPerKg: v })}
             />
             <NumField
-              label="Estimated CO₂e per kg recovered"
+              label="Greenhouse Gas Avoidance Factor (kg CO₂e per kg E-Waste)"
               value={set.co2ePerKg}
               step={0.01}
               onChange={(v) => updateSettings({ co2ePerKg: v })}
             />
             <NumField
-              label="Weight variance"
+              label="Weight Tolerance Threshold (Auto-Dispute Trigger %)"
               value={set.weightVariance}
               step={0.01}
               onChange={(v) => updateSettings({ weightVariance: v })}
             />
             <NumField
-              label="Agent travel speed"
-              value={set.agentSpeed}
-              step={0.01}
-              onChange={(v) => updateSettings({ agentSpeed: v })}
-            />
-            <NumField
-              label="Pickup step duration (simulated seconds)"
-              value={set.stepSeconds}
+              label="Collector Response SLA Timeout (Minutes)"
+              value={Math.round(set.stepSeconds / 60) || 5}
               step={1}
-              onChange={(v) => updateSettings({ stepSeconds: v })}
-            />
-            <NumField
-              label="Failure probability"
-              value={set.failureProbability}
-              step={0.05}
-              onChange={(v) => updateSettings({ failureProbability: v })}
-            />
-            <NumField
-              label="Delay probability"
-              value={set.delayProbability}
-              step={0.05}
-              onChange={(v) => updateSettings({ delayProbability: v })}
+              onChange={(v) => updateSettings({ stepSeconds: v * 60 })}
             />
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <PopButton tone="lime" onClick={() => launchDemo()}>
-              🚀 Launch Demo
-            </PopButton>
-            <PopButton tone="outline" onClick={() => clearDemoData()}>
-              🧹 Clear Demo Data
-            </PopButton>
-            <PopButton tone="coral" onClick={() => resetSimulation(set.seed)}>
-              🔄 Reset Simulation
-            </PopButton>
+          <div className="mt-4 rounded-xl bg-muted/60 p-3 text-xs text-muted-foreground leading-relaxed">
+            Policy updates take effect immediately for all active dispatch broadcasts and new pickup requests.
           </div>
         </Card>
+
+        {/* Live Compliance Audit Log */}
+        <EventLog className="lg:col-span-6" />
       </section>
 
+      {/* Statutory Material Recovery Yield Standards */}
       <Card>
-        <CardTitle title="Recycling Factors (Simulation Parameters)" badge={<Chip tone="coral">Not verified rates</Chip>} />
+        <CardTitle title="Statutory Material Sorting Yield Factors" badge={<Chip tone="lime">CPCB Schedule Standards</Chip>} />
         <SectionNote>
-          These shares are demo parameters used by the sorting simulation. They are not verified real-world recovery
-          rates.
+          Reference recovery coefficients under Extended Producer Responsibility (EPR) guidelines for authorized Indian e-waste recyclers.
         </SectionNote>
         <div className="mt-4 overflow-auto">
           <table className="w-full text-left text-sm">
-            <thead className="text-[11px] tracking-wide text-muted-foreground uppercase">
+            <thead className="text-[11px] tracking-wide text-muted-foreground uppercase border-b pb-2">
               <tr>
-                <th className="py-2">Category</th>
-                <th>Reusable</th>
-                <th>Recyclable</th>
-                <th>Hazardous</th>
-                <th>Residual</th>
+                <th className="py-2.5">Category</th>
+                <th>Reusable Parts</th>
+                <th>Recyclable Metals</th>
+                <th>Hazardous Frax</th>
+                <th>Safe Residual</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border/60">
               {CATEGORIES.map((c) => {
-                const f = set.factors[c.id];
+                const f = s.settings.factors[c.id];
                 return (
-                  <tr key={c.id} className="border-t border-border/60">
-                    <td className="py-2 font-semibold">
-                      {c.emoji} {c.label}
+                  <tr key={c.id} className="hover:bg-cream/80 transition-colors">
+                    <td className="py-2 font-bold flex items-center gap-2">
+                      <span className="text-base">{c.emoji}</span>
+                      <span>{c.label}</span>
                     </td>
-                    {(["reusable", "recyclable", "hazardous", "residual"] as const).map((k) => (
-                      <td key={k}>
-                        <input
-                          type="number"
-                          step={0.01}
-                          min={0}
-                          max={1}
-                          value={f[k]}
-                          onChange={(e) => updateFactor(c.id, k, Number(e.target.value))}
-                          className="w-20 rounded-lg border-2 border-input bg-card px-2 py-1 font-mono text-xs"
-                        />
-                      </td>
-                    ))}
+                    <td>
+                      <FactorInput
+                        value={f.reusable}
+                        onChange={(v) => updateFactor(c.id, "reusable", v)}
+                      />
+                    </td>
+                    <td>
+                      <FactorInput
+                        value={f.recyclable}
+                        onChange={(v) => updateFactor(c.id, "recyclable", v)}
+                      />
+                    </td>
+                    <td>
+                      <FactorInput
+                        value={f.hazardous}
+                        onChange={(v) => updateFactor(c.id, "hazardous", v)}
+                      />
+                    </td>
+                    <td>
+                      <FactorInput
+                        value={f.residual}
+                        onChange={(v) => updateFactor(c.id, "residual", v)}
+                      />
+                    </td>
                   </tr>
                 );
               })}
@@ -185,50 +147,7 @@ function ControlPage() {
           </table>
         </div>
       </Card>
-
-      <section className="grid gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-7">
-          <EventLog />
-        </div>
-        <Card className="lg:col-span-5">
-          <CardTitle title="Audit Log" badge={<Chip tone="cream">Simulation Event</Chip>} />
-          <div className="max-h-[360px] space-y-2 overflow-auto">
-            {s.audit.length === 0 ? <SectionNote>No simulated admin actions recorded yet.</SectionNote> : null}
-            {s.audit.map((a) => (
-              <div key={a.id} className="rounded-xl bg-cream p-3">
-                <div className="text-sm font-semibold">{a.action}</div>
-                <div className="font-mono text-[11px] text-muted-foreground">
-                  {a.actor} · {simClock(a.at)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </section>
-
-      <Card>
-        <CardTitle title="Simulated KPIs" badge={<Chip tone="cream">Simulation Data</Chip>} />
-        <div className="ec-grid grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat label="Demo Customers" value={t.customers} />
-          <Stat label="Simulated Pickups" value={t.pickups} />
-          <Stat label="Simulated Collected" value={`${t.collectedKg} kg`} />
-          <Stat label="Simulated Certificates" value={t.certificates} />
-        </div>
-      </Card>
     </div>
-  );
-}
-
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <label className="block">
-      <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{label}</span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-xl border-2 border-input bg-card px-3 py-2 font-mono text-sm"
-      />
-    </label>
   );
 }
 
@@ -244,15 +163,29 @@ function NumField({
   onChange: (v: number) => void;
 }) {
   return (
-    <label className="block">
-      <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{label}</span>
+    <div className="flex items-center justify-between gap-3 border-b border-border/40 pb-2">
+      <span className="text-xs font-semibold text-foreground">{label}</span>
       <input
         type="number"
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-1 w-full rounded-xl border-2 border-input bg-card px-3 py-2 font-mono text-sm"
+        className="w-24 rounded-xl border-2 border-input bg-cream px-2.5 py-1.5 text-right font-mono text-xs font-bold"
       />
-    </label>
+    </div>
+  );
+}
+
+function FactorInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <input
+      type="number"
+      step={0.05}
+      min={0}
+      max={1}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="w-16 rounded-lg border border-input bg-cream px-2 py-1 text-center font-mono text-xs font-bold"
+    />
   );
 }

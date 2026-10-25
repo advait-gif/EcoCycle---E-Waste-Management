@@ -137,7 +137,7 @@ export function GoogleAuthPromptModal({ forceOpen = false, onClose }: GoogleAuth
               <div className="w-full border-t border-border" />
             </div>
             <span className="relative bg-card px-3 text-[11px] font-semibold text-muted-foreground uppercase">
-              Or Try Instant Demo Accounts
+              Or Instant Role Access
             </span>
           </div>
 

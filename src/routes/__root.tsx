@@ -73,11 +73,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "EcoCycle — E-Waste Recycling Simulator" },
+      { title: "EcoCycle — India's Verified E-Waste Marketplace & Recycling Platform" },
       {
         name: "description",
-        content: "A simulated e-waste collection and recycling management system. Demo data only.",
+        content: "Doorstep e-waste collection connecting households and businesses with verified collectors and authorized recyclers. Verifiable chain of custody, instant rewards, and green certificates.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

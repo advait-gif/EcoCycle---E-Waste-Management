@@ -54,7 +54,7 @@ export function PickupWorkflow({ pickup }: { pickup: Pickup }) {
       </div>
       {stopped ? (
         <div className="mt-4">
-          <Chip tone="coral">Simulation stopped: {pickup.status}</Chip>
+          <Chip tone="coral">Status: {pickup.status}</Chip>
         </div>
       ) : null}
     </div>

@@ -18,3 +18,4 @@ export const simTime = (ms: number) => TIME_FMT.format(new Date(ms)).toUpperCase
 export const simClock = (ms: number) => `${simDate(ms)} · ${simTime(ms)}`;
 export const kg = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString("en-US")} kg`;
 export const num = (n: number) => Math.round(n).toLocaleString("en-US");
+export const rewardPoints = (kg: number, rate = 10) => Math.round(kg * rate);

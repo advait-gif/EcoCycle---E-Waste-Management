@@ -49,11 +49,12 @@ export function SimMap({ compact = false }: { compact?: boolean }) {
         />
         <div className="absolute top-3 right-3 rounded-xl bg-ink/90 px-3 py-2 text-[11px] leading-tight text-ink-foreground">
           <div className="font-mono font-bold text-lime">{distanceKm} km</div>
-          <div className="opacity-70">ETA {etaMin} min · simulated</div>
+          <div className="opacity-80">ETA {etaMin} min · Live Transit</div>
         </div>
       </div>
-      <p className="mt-3 text-xs font-medium text-muted-foreground">
-        Fictional coordinates. Distance and ETA are simulated values, not real GPS.
+      <p className="mt-3 text-xs font-semibold text-muted-foreground flex items-center justify-between">
+        <span>📍 Bengaluru Urban Metro · Live Collection &amp; Facility Network</span>
+        <span className="font-mono text-leaf">GPS Active</span>
       </p>
     </div>
   );

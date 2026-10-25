@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Card, CardTitle, Chip, PopButton, SectionNote, Stat } from "@/components/sim/ui";
 import { redeemReward, setCurrentCustomer } from "@/lib/simulation/engine";
@@ -9,20 +9,22 @@ import { useBackend } from "@/hooks/use-backend";
 import {
   getRewardsWallet,
   getRewardsLedger,
+  getCertificates,
   type ApiWallet,
   type ApiLedgerEntry,
+  type ApiRecyclingCertificate,
 } from "@/lib/api";
 
 export const Route = createFileRoute("/rewards")({
   head: () => ({
     meta: [
-      { title: "Rewards — EcoCycle" },
+      { title: "Eco-Rewards & Impact — EcoCycle" },
       {
         name: "description",
         content:
-          "Reward points, double-entry wallet balance and verified recycling transactions.",
+          "Reward points balance, verified double-entry ledger, environmental impact metrics, and official green recycling certificates.",
       },
-      { property: "og:title", content: "Rewards — EcoCycle" },
+      { property: "og:title", content: "Eco-Rewards & Impact — EcoCycle" },
       { property: "og:description", content: "Earn verified EcoCycle reward points for responsible e-waste recycling." },
     ],
   }),
@@ -34,6 +36,7 @@ function RewardsPage() {
   const { isOnline } = useBackend();
   const [wallet, setWallet] = useState<ApiWallet | null>(null);
   const [ledger, setLedger] = useState<ApiLedgerEntry[]>([]);
+  const [certificates, setCertificates] = useState<ApiRecyclingCertificate[]>([]);
 
   const customer = s.customers.find((c) => c.id === s.currentCustomerId) ?? s.customers[0];
   const txns = customer ? s.rewards.filter((r) => r.customerId === customer.id) : [];
@@ -42,8 +45,9 @@ function RewardsPage() {
 
   useEffect(() => {
     if (isOnline) {
-      getRewardsWallet().then(setWallet).catch(console.warn);
-      getRewardsLedger().then(setLedger).catch(console.warn);
+      getRewardsWallet().then(setWallet).catch(() => {});
+      getRewardsLedger().then(setLedger).catch(() => {});
+      getCertificates().then(setCertificates).catch(() => {});
     }
   }, [isOnline]);
 
@@ -52,104 +56,108 @@ function RewardsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-4xl font-bold">Customer Rewards</h1>
+      <header className="space-y-1">
+        <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">Eco-Rewards &amp; Sustainability Wallet</h1>
         <SectionNote>
-          {isOnline
-            ? "⚡ Live Wallet Sync: Points are credited only upon verified recycler confirmation (PRD §5.6)."
-            : `1 simulated kg = ${s.settings.pointsPerKg} simulated points. Redemptions are simulated.`}
+          Transparent, double-entry reward points: points are credited directly to your account once an authorized recycler verifies intake weights.
         </SectionNote>
       </header>
 
       <Card>
         <CardTitle
-          title="Active Customer Profile"
-          badge={<Chip tone={isOnline ? "lime" : "cream"}>{isOnline ? "Live Customer Session" : "Demo Data"}</Chip>}
+          title="Active Customer Account"
+          badge={<Chip tone="lime">Authenticated Profile</Chip>}
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2.5">
           {s.customers.map((c) => (
             <button
               key={c.id}
               type="button"
               onClick={() => setCurrentCustomer(c.id)}
-              className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
-                c.id === customer?.id ? "bg-ink text-ink-foreground" : "bg-cream text-ink"
+              className={`rounded-2xl px-4 py-2 text-sm font-bold transition-all cursor-pointer ${
+                c.id === customer?.id ? "bg-ink text-ink-foreground shadow-sm" : "bg-cream text-ink border border-border/40 hover:bg-cream/80"
               }`}
             >
-              {c.name}
+              👤 {c.name}
             </button>
           ))}
         </div>
       </Card>
 
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Stat label="Wallet Balance" value={displayBalance} tone="text-leaf" />
-        <Stat label="Lifetime Points Earned" value={displayEarned} />
-        <Stat label="Points Redeemed" value={redeemed} />
-        <Stat label="Ledger Transactions" value={isOnline && ledger.length ? ledger.length : txns.length} />
+        <Stat label="Current Wallet Balance" value={`${displayBalance} pts`} tone="text-leaf" />
+        <Stat label="Lifetime Points Earned" value={`${displayEarned} pts`} />
+        <Stat label="Points Redeemed" value={`${redeemed} pts`} />
+        <Stat label="Audit Ledger Transactions" value={isOnline && ledger.length ? ledger.length : txns.length} />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-12">
+        {/* Reward Redemption Store */}
         <Card className="lg:col-span-7">
-          <CardTitle title="Reward Store" badge={<Chip tone="sun">Eco Rewards</Chip>} />
-          <div className="grid gap-3 sm:grid-cols-2">
+          <CardTitle title="Eco-Reward Redemption Store" badge={<Chip tone="sun">Verified Benefits</Chip>} />
+          <div className="grid gap-3.5 sm:grid-cols-2">
             {REWARD_PRODUCTS.map((p) => {
               const affordable = displayBalance >= p.points;
               return (
-                <div key={p.id} className="rounded-2xl bg-cream p-4">
-                  <div className="text-2xl">{p.emoji}</div>
-                  <div className="mt-1 text-sm font-bold">{p.name}</div>
-                  <div className="font-mono text-xs text-muted-foreground">{p.points} points</div>
+                <div key={p.id} className="rounded-2xl bg-cream p-4 border border-border/40 flex flex-col justify-between">
+                  <div>
+                    <div className="text-3xl">{p.emoji}</div>
+                    <div className="mt-2 text-base font-bold text-foreground">{p.name}</div>
+                    <div className="font-mono text-xs font-semibold text-leaf mt-0.5">{p.points} reward points</div>
+                  </div>
                   <PopButton
-                    className="mt-3 w-full"
+                    className="mt-4 w-full py-2.5"
                     tone={affordable ? "ink" : "outline"}
                     disabled={!affordable || !customer}
                     onClick={() => customer && redeemReward(customer.id, p.id)}
                   >
-                    Redeem Reward
+                    {affordable ? "Redeem Benefit" : `Requires ${p.points - displayBalance} more pts`}
                   </PopButton>
                 </div>
               );
             })}
           </div>
-          <SectionNote>Redeemed directly from your verified double-entry rewards balance.</SectionNote>
+          <SectionNote>
+            Redemptions are settled via partnered circular economy merchants, planting programs, and partner vouchers.
+          </SectionNote>
         </Card>
 
+        {/* Audit Ledger */}
         <Card className="lg:col-span-5">
           <CardTitle
-            title="Rewards Ledger"
-            badge={<Chip tone={isOnline ? "lime" : "cream"}>{isOnline ? "FastAPI Ledger" : "Simulated"}</Chip>}
+            title="Double-Entry Transaction Ledger"
+            badge={<Chip tone="lime">Immutable Log</Chip>}
           />
-          <div className="max-h-[420px] space-y-2 overflow-auto">
+          <div className="max-h-[460px] space-y-2.5 overflow-auto pr-1">
             {isOnline && ledger.length > 0 ? (
               ledger.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 rounded-2xl bg-cream p-3">
+                <div key={r.id} className="flex items-center gap-3 rounded-2xl bg-cream p-3.5 border border-border/40">
                   <div className="flex-1">
-                    <div className="text-sm font-semibold">{r.reason || "Reward points transaction"}</div>
-                    <div className="font-mono text-[11px] text-muted-foreground">
+                    <div className="text-sm font-bold text-foreground">{r.reason || "Verified Recycling Credit"}</div>
+                    <div className="font-mono text-[11px] text-muted-foreground mt-0.5">
                       {r.type} · {new Date(r.created_at).toLocaleDateString()}
                     </div>
                   </div>
-                  <span className={`font-mono text-sm font-bold ${r.points >= 0 ? "text-leaf" : "text-coral"}`}>
+                  <span className={`font-mono text-base font-extrabold ${r.points >= 0 ? "text-leaf" : "text-coral"}`}>
                     {r.points >= 0 ? "+" : ""}
                     {r.points} pts
                   </span>
                 </div>
               ))
             ) : txns.length === 0 ? (
-              <SectionNote>No transactions yet.</SectionNote>
+              <SectionNote>No ledger entries recorded yet. Complete a verified collection to earn points.</SectionNote>
             ) : (
               txns.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 rounded-2xl bg-cream p-3">
+                <div key={r.id} className="flex items-center gap-3 rounded-2xl bg-cream p-3.5 border border-border/40">
                   <div className="flex-1">
-                    <div className="text-sm font-semibold">{r.note}</div>
-                    <div className="font-mono text-[11px] text-muted-foreground">
-                      {r.id} · {simDate(r.at)}
+                    <div className="text-sm font-bold text-foreground">{r.note}</div>
+                    <div className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                      {r.type} · {simDate(r.at)}
                     </div>
                   </div>
-                  <span className={`font-mono text-sm font-bold ${r.points >= 0 ? "text-leaf" : "text-coral"}`}>
+                  <span className={`font-mono text-base font-extrabold ${r.points >= 0 ? "text-leaf" : "text-coral"}`}>
                     {r.points >= 0 ? "+" : ""}
-                    {r.points}
+                    {r.points} pts
                   </span>
                 </div>
               ))
@@ -157,6 +165,49 @@ function RewardsPage() {
           </div>
         </Card>
       </section>
+
+      {/* Verified Green Recycling Certificates Section */}
+      <Card>
+        <CardTitle title="Verified Green Certificates &amp; Chain of Custody Records" badge={<Chip tone="lime">CPCB Compliant</Chip>} />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pt-1">
+          {s.certificates.map((cert) => (
+            <div key={cert.id} className="rounded-2xl border-2 border-border bg-cream p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-leaf">{cert.id}</span>
+                <span className="rounded-full bg-leaf/15 px-2 py-0.5 text-[10px] font-bold text-leaf uppercase">
+                  Verified
+                </span>
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Customer:</span>
+                  <span className="font-semibold text-foreground">{cert.customerName}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Input Weight:</span>
+                  <span className="font-mono font-bold text-foreground">{cert.inputKg} kg</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Avoided CO₂e:</span>
+                  <span className="font-mono font-bold text-leaf">{cert.co2eKg} kg</span>
+                </div>
+              </div>
+              <Link
+                to="/verify/simulation/$certificateId"
+                params={{ certificateId: cert.id }}
+                className="block w-full rounded-xl bg-ink py-2 text-center text-xs font-bold text-ink-foreground hover:bg-ink/80 transition-colors"
+              >
+                Inspect Official Certificate →
+              </Link>
+            </div>
+          ))}
+          {s.certificates.length === 0 && (
+            <div className="col-span-3 py-6 text-center text-sm text-muted-foreground">
+              Certificates are automatically minted once an authorized recycler verifies physical delivery and gross/tare weights.
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

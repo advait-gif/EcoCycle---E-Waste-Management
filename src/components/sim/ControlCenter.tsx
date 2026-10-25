@@ -8,7 +8,7 @@ export function ControlCenter() {
   return (
     <section className="rounded-3xl bg-ink p-5 text-ink-foreground">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="font-display mr-2 text-lg font-bold">Simulation Control Center</div>
+        <div className="font-display mr-2 text-lg font-bold">Marketplace Operations Dispatch</div>
         <button
           type="button"
           onClick={() => setRunning(true)}

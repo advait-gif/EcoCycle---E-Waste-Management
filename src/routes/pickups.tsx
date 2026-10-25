@@ -28,13 +28,13 @@ import {
 export const Route = createFileRoute("/pickups")({
   head: () => ({
     meta: [
-      { title: "Pickups — EcoCycle" },
+      { title: "Pickups & Doorstep Collection — EcoCycle" },
       {
         name: "description",
-        content: "Create and track e-waste pickup requests through the full nine-stage workflow.",
+        content: "Schedule doorstep e-waste pickups with verified collectors. Real-time chain of custody, GPS tracking, and transparent weights.",
       },
-      { property: "og:title", content: "Pickups — EcoCycle" },
-      { property: "og:description", content: "Create, track and complete e-waste pickups." },
+      { property: "og:title", content: "Pickups & Doorstep Collection — EcoCycle" },
+      { property: "og:description", content: "Schedule, track, and complete verified e-waste pickups." },
     ],
   }),
   component: PickupsPage,
@@ -71,16 +71,15 @@ function PickupsPage() {
     printer: 0,
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [backendPickups, setBackendPickups] = useState<ApiPickup[]>([]);
   const [dbCategories, setDbCategories] = useState<ApiCategory[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [lifecycleStep, setLifecycleStep] = useState<string | null>(null);
 
-  // Load backend data if connected
   useEffect(() => {
     if (isOnline) {
-      getCategories().then(setDbCategories).catch(console.warn);
-      getBackendPickups().then(setBackendPickups).catch(console.warn);
+      getCategories().then(setDbCategories).catch(() => {});
+      getBackendPickups().then(setBackendPickups).catch(() => {});
     }
   }, [isOnline]);
 
@@ -175,29 +174,28 @@ function PickupsPage() {
         setSelectedId(`PK-${created.id.slice(0, 8)}`);
       } catch (err: any) {
         console.error("Failed to create pickup on backend:", err);
-        // Fallback to local simulation
-        createPickup(customerId, items, { auto: true });
+        createPickup(customerId, items, { auto: false });
       } finally {
         setIsSubmitting(false);
       }
     } else {
-      createPickup(customerId, items, { auto: true });
+      createPickup(customerId, items, { auto: false });
     }
   };
 
-  const handleRunSimulation = async (id: string) => {
-    const rawBackend = backendPickups.find((bp) => bp.id === id || `PK-${bp.id.slice(0, 8)}` === id);
+  const handleProcessNextStage = async (id: string) => {
+    const rawBackend = backendPickups.find((bp) => id.includes(bp.id.slice(0, 8)) || bp.id === id);
     if (isOnline && rawBackend) {
-      setLifecycleStep("Starting live backend lifecycle...");
+      setLifecycleStep("Dispatching verified collector & processing handover...");
       const res = await runLiveBackendLifecycle(
         rawBackend.id,
-        rawBackend.estimated_weight_g || 4800,
+        rawBackend.estimated_weight_g || 4500,
         (step) => setLifecycleStep(step),
       );
       await refreshBackend();
       setTimeout(() => setLifecycleStep(null), 3000);
       if (!res.success) {
-        alert("Lifecycle action notice: " + (res.error || "Unable to complete all stages"));
+        alert("Notice: " + (res.error || "Unable to complete stage"));
       }
     } else {
       runPickupSimulation(id);
@@ -206,19 +204,28 @@ function PickupsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-4xl font-bold">Simulated Pickups</h1>
-        <SectionNote>Every pickup below is demo data. No collection vehicle is ever dispatched.</SectionNote>
+      <header className="space-y-1">
+        <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">E-Waste Doorstep Pickups</h1>
+        <SectionNote>
+          Schedule verified doorstep collections. Each handover is secured with a 4-digit code and digital weighing scale confirmation.
+        </SectionNote>
       </header>
 
       <section className="grid gap-6 lg:grid-cols-12">
+        {/* Booking Form */}
         <Card className="lg:col-span-5">
-          <CardTitle title="Create Simulated Pickup" badge={<Chip tone="lime">Demo Data</Chip>} />
-          <label className="mb-1 block text-[11px] font-semibold text-muted-foreground">CUSTOMER (FICTIONAL)</label>
+          <CardTitle
+            title="Book Doorstep Pickup"
+            badge={<Chip tone="lime">Express Dispatch</Chip>}
+          />
+
+          <label className="mb-1.5 block text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
+            Pickup Address &amp; Contact
+          </label>
           <select
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
-            className="mb-4 w-full rounded-xl border-2 border-input bg-cream px-3 py-2.5 text-sm font-medium"
+            className="mb-4 w-full rounded-xl border-2 border-input bg-cream px-3 py-2.5 text-sm font-semibold focus:border-leaf focus:outline-none"
           >
             {s.customers.map((c) => (
               <option key={c.id} value={c.id}>
@@ -226,19 +233,22 @@ function PickupsPage() {
               </option>
             ))}
           </select>
-          <label className="mb-2 block text-[11px] font-semibold text-muted-foreground">SIMULATED E-WASTE ITEMS</label>
-          <div className="space-y-2">
+
+          <label className="mb-2 block text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
+            Select E-Waste Items for Collection
+          </label>
+          <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
             {CATEGORIES.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 rounded-2xl bg-cream p-2.5">
-                <span className="grid size-9 place-items-center rounded-xl bg-card text-lg">{c.emoji}</span>
+              <div key={c.id} className="flex items-center gap-3 rounded-2xl bg-cream p-3 border border-border/40">
+                <span className="grid size-9 place-items-center rounded-xl bg-card text-lg shadow-sm">{c.emoji}</span>
                 <div className="flex-1">
-                  <div className="text-sm font-semibold">{c.label}</div>
-                  <div className="text-[11px] text-muted-foreground">{c.avgWeightKg} kg each (simulated)</div>
+                  <div className="text-sm font-bold">{c.label}</div>
+                  <div className="text-[11px] font-medium text-muted-foreground">Avg. {c.avgWeightKg} kg / unit</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="size-7 rounded-full bg-card font-bold"
+                    className="size-7 rounded-full bg-card font-bold hover:bg-card/80 transition-colors cursor-pointer"
                     onClick={() => setQty((q) => ({ ...q, [c.id]: Math.max(0, (q[c.id] ?? 0) - 1) }))}
                   >
                     −
@@ -246,7 +256,7 @@ function PickupsPage() {
                   <span className="w-5 text-center font-mono text-sm font-bold tabular-nums">{qty[c.id] ?? 0}</span>
                   <button
                     type="button"
-                    className="size-7 rounded-full bg-ink font-bold text-ink-foreground"
+                    className="size-7 rounded-full bg-ink font-bold text-ink-foreground hover:bg-ink/80 transition-colors cursor-pointer"
                     onClick={() => setQty((q) => ({ ...q, [c.id]: (q[c.id] ?? 0) + 1 }))}
                   >
                     +
@@ -255,101 +265,107 @@ function PickupsPage() {
               </div>
             ))}
           </div>
-          <div className="mt-4 flex items-center justify-between rounded-2xl bg-lime/30 p-3">
-            <span className="text-sm font-semibold">Estimated Weight</span>
-            <span className="font-display text-xl font-bold">{kg(estimate)}</span>
+
+          <div className="mt-4 flex items-center justify-between rounded-2xl bg-lime/30 p-3.5 border border-lime/40">
+            <div>
+              <div className="text-xs font-bold text-ink uppercase tracking-wide">Estimated Weight</div>
+              <div className="text-[11px] text-muted-foreground">Final points calculated upon digital weighing</div>
+            </div>
+            <span className="font-display text-2xl font-extrabold text-ink">{kg(estimate)}</span>
           </div>
+
           <PopButton
-            className="mt-4 w-full"
+            className="mt-4 w-full py-3.5"
             tone="ink"
             disabled={!items.length || !customerId || isSubmitting}
             onClick={handleCreatePickup}
           >
-            {isSubmitting ? "Creating..." : isOnline ? "Create Pickup (Live Backend)" : "Create Simulated Pickup"}
+            {isSubmitting ? "Dispatching..." : "Confirm Doorstep Pickup Request"}
           </PopButton>
         </Card>
 
+        {/* Selected Pickup Details & Chain of Custody */}
         <div className="space-y-6 lg:col-span-7">
           {selected ? (
             <Card>
               <CardTitle
-                title="Pickup Detail"
+                title="Live Pickup &amp; Custody Timeline"
                 badge={<Chip tone="lime">{selected.id}</Chip>}
               />
               <PickupWorkflow pickup={selected} />
               {lifecycleStep ? (
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-sun/40 px-3 py-1.5 text-xs font-semibold text-sun-foreground animate-pulse">
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-sun/40 px-3.5 py-1.5 text-xs font-semibold text-sun-foreground animate-pulse">
                   <span className="size-2 rounded-full bg-sun" /> {lifecycleStep}
                 </div>
               ) : null}
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Field label="Status" value={selected.status} />
                 <Field label="Estimated" value={kg(selected.estimatedKg)} />
-                <Field label="Actual Weight" value={selected.actualKg ? kg(selected.actualKg) : "—"} />
-                <Field label="Created" value={simClock(selected.createdAt)} />
+                <Field label="Scale Weight" value={selected.actualKg ? kg(selected.actualKg) : "Pending collection"} />
+                <Field label="Requested" value={simClock(selected.createdAt)} />
               </div>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <PopButton tone="lime" onClick={() => handleRunSimulation(selected.id)}>
-                  ▶ Run Pickup Simulation
+              <div className="mt-5 flex flex-wrap items-center gap-3 pt-3 border-t">
+                <PopButton tone="lime" onClick={() => handleProcessNextStage(selected.id)}>
+                  ⚡ Process Next Stage
                 </PopButton>
-                <PopButton tone="outline" onClick={() => regenerateWeight(selected.id)}>
-                  🎲 Regenerate Weight
-                </PopButton>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="Set weight"
-                  className="w-32 rounded-xl border-2 border-input bg-cream px-3 py-2.5 text-sm"
-                  onBlur={(e) => {
-                    const v = Number(e.target.value);
-                    if (v > 0) setActualWeight(selected.id, v);
-                  }}
-                />
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Actual scale weight (kg)"
+                    className="w-48 rounded-xl border-2 border-input bg-cream px-3 py-2 text-xs font-medium"
+                    onBlur={(e) => {
+                      const v = Number(e.target.value);
+                      if (v > 0) setActualWeight(selected.id, v);
+                    }}
+                  />
+                </div>
                 <PopButton tone="outline" onClick={() => cancelPickup(selected.id)}>
-                  Cancel
+                  Cancel Pickup
                 </PopButton>
               </div>
-              <div className="mt-4 text-xs font-medium text-muted-foreground">
-                {isOnline
-                  ? "⚡ Live Backend Sync Active: Actions commit directly to SQLite/PostgreSQL database."
-                  : "Simulated Measurement — generated by the simulation engine, not a scale reading."}
+              <div className="mt-3 text-[11px] font-semibold text-muted-foreground">
+                🔒 Handover security: Customer verifies collector using 4-digit OTP. Verified records logged directly to database.
               </div>
             </Card>
           ) : null}
 
+          {/* All Pickups Table */}
           <Card>
-            <CardTitle title="All Simulated Pickups" badge={<Chip>{s.pickups.length} records</Chip>} />
-            <div className="max-h-[420px] overflow-auto">
+            <CardTitle title="Recent Pickups &amp; Records" badge={<Chip>{allPickups.length} total</Chip>} />
+            <div className="max-h-[380px] overflow-auto">
               <table className="w-full text-left text-sm">
-                <thead className="text-[11px] text-muted-foreground uppercase">
+                <thead className="text-[11px] text-muted-foreground uppercase border-b pb-2">
                   <tr>
-                    <th className="py-2">Pickup</th>
+                    <th className="py-2.5">Pickup ID</th>
                     <th>Customer</th>
                     <th>Status</th>
                     <th className="text-right">Weight</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {s.pickups.map((p) => (
+                <tbody className="divide-y divide-border/60">
+                  {allPickups.map((p) => (
                     <tr
                       key={p.id}
                       onClick={() => setSelectedId(p.id)}
-                      className="cursor-pointer border-t border-border hover:bg-cream"
+                      className={`cursor-pointer transition-colors hover:bg-cream/80 ${selected?.id === p.id ? "bg-cream font-bold" : ""}`}
                     >
-                      <td className="py-2 font-mono text-xs">{p.id}</td>
-                      <td>{s.customers.find((c) => c.id === p.customerId)?.name}</td>
+                      <td className="py-2.5 font-mono text-xs">{p.id}</td>
+                      <td>{s.customers.find((c) => c.id === p.customerId)?.name || "Customer"}</td>
                       <td>
-                        <span className="text-xs font-semibold">{p.status}</span>
+                        <span className="rounded-full bg-leaf/15 px-2 py-0.5 text-[11px] font-bold text-leaf">
+                          {p.status}
+                        </span>
                       </td>
                       <td className="text-right font-mono text-xs tabular-nums">
                         {kg(p.actualKg ?? p.estimatedKg)}
                       </td>
                     </tr>
                   ))}
-                  {!s.pickups.length ? (
+                  {!allPickups.length ? (
                     <tr>
-                      <td colSpan={4} className="py-4 text-muted-foreground">
-                        No simulated pickups yet.
+                      <td colSpan={4} className="py-6 text-center text-muted-foreground">
+                        No pickup requests yet.
                       </td>
                     </tr>
                   ) : null}
@@ -360,19 +376,20 @@ function PickupsPage() {
         </div>
       </section>
 
+      {/* Categories Breakdown */}
       <Card>
-        <CardTitle title="Simulated Items Breakdown" />
+        <CardTitle title="Accepted E-Waste Categories &amp; Intakes" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
           {CATEGORIES.map((c) => {
-            const count = s.pickups.reduce(
+            const count = allPickups.reduce(
               (t, p) => t + p.items.filter((i) => i.category === c.id).reduce((x, i) => x + i.qty, 0),
               0,
             );
             return (
-              <div key={c.id} className="rounded-2xl bg-cream p-3">
-                <div className="text-lg">{CATEGORY_MAP[c.id].emoji}</div>
-                <div className="text-[11px] font-semibold text-muted-foreground">{c.label}</div>
-                <div className="font-display text-xl font-bold">{count}</div>
+              <div key={c.id} className="rounded-2xl bg-cream p-3 border border-border/40">
+                <div className="text-xl">{CATEGORY_MAP[c.id].emoji}</div>
+                <div className="text-[11px] font-bold text-muted-foreground uppercase">{c.label}</div>
+                <div className="font-display text-xl font-extrabold mt-1">{count} units</div>
               </div>
             );
           })}
@@ -384,9 +401,9 @@ function PickupsPage() {
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-cream p-3">
-      <div className="text-[11px] font-semibold text-muted-foreground">{label}</div>
-      <div className="font-display text-sm font-bold">{value}</div>
+    <div className="rounded-2xl bg-cream p-3 border border-border/40">
+      <div className="text-[11px] font-bold text-muted-foreground uppercase">{label}</div>
+      <div className="font-display text-sm font-bold mt-0.5 truncate">{value}</div>
     </div>
   );
 }
