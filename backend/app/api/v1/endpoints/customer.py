@@ -216,16 +216,18 @@ def list_pickups(
 @router.get("/pickups/{pickup_id}", response_model=PickupOut)
 def get_pickup(
     pickup_id: str,
-    current_user: User = Depends(require_roles("CUSTOMER")),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     pickup = db.execute(
         select(PickupRequest)
-        .where(PickupRequest.id == pickup_id, PickupRequest.customer_id == current_user.id)
+        .where(PickupRequest.id == pickup_id)
         .options(selectinload(PickupRequest.items))
     ).scalar_one_or_none()
     if not pickup:
         raise HTTPException(404, {"code": "NOT_FOUND", "message": "Pickup not found."})
+    if current_user.role.value == "CUSTOMER" and pickup.customer_id != current_user.id:
+        raise HTTPException(403, {"code": "FORBIDDEN", "message": "Access denied."})
     return pickup
 
 

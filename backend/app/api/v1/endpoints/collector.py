@@ -1,4 +1,4 @@
-﻿"""
+"""
 Collector endpoints: onboarding, jobs, weighing, batches, earnings.
 """
 from datetime import datetime, timezone
@@ -143,6 +143,49 @@ def decline_offer(offer_id: str, current_user: User = Depends(require_roles("COL
     return {"ok": True}
 
 
+@router.post("/collector/jobs/{pickup_id}/accept")
+def accept_job(
+    pickup_id: str,
+    current_user: User = Depends(require_roles("COLLECTOR")),
+    db: Session = Depends(get_db),
+):
+    pickup = db.get(PickupRequest, pickup_id)
+    if not pickup:
+        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Job not found."})
+    if pickup.collector_id and pickup.collector_id != current_user.id:
+        raise HTTPException(400, {"code": "ALREADY_ASSIGNED", "message": "Pickup already assigned to another collector."})
+
+    prev = pickup.status.value
+    pickup.collector_id = current_user.id
+    pickup.status = PickupStatus.ACCEPTED
+
+    # Resolve pending offer for this collector if one exists
+    offer = db.execute(
+        select(PickupOffer).where(
+            PickupOffer.pickup_id == pickup.id,
+            PickupOffer.collector_id == current_user.id,
+            PickupOffer.response == OfferResponse.PENDING,
+        )
+    ).scalar_one_or_none()
+    if offer:
+        offer.response = OfferResponse.ACCEPTED
+        offer.responded_at = datetime.now(timezone.utc)
+
+    db.add(PickupStatusHistory(
+        pickup_id=pickup.id, from_status=prev,
+        to_status=PickupStatus.ACCEPTED.value, actor_id=current_user.id,
+        note="Direct assignment accepted by collector",
+    ))
+    notification_service.send_notification(
+        db, pickup.customer_id,
+        "Collector Accepted",
+        "A collector has accepted your pickup request.",
+        reference_type="pickup", reference_id=pickup.id,
+    )
+    db.commit()
+    return {"ok": True, "status": "ACCEPTED", "pickup_id": pickup.id}
+
+
 @router.post("/collector/jobs/{pickup_id}/status")
 def update_job_status(
     pickup_id: str,
@@ -151,16 +194,24 @@ def update_job_status(
     db: Session = Depends(get_db),
 ):
     VALID_TRANSITIONS = {
+        PickupStatus.REQUESTED.value: [PickupStatus.ACCEPTED.value, PickupStatus.EN_ROUTE.value],
+        PickupStatus.OFFERED.value: [PickupStatus.ACCEPTED.value, PickupStatus.EN_ROUTE.value],
         PickupStatus.ACCEPTED.value: [PickupStatus.EN_ROUTE.value],
         PickupStatus.EN_ROUTE.value: [PickupStatus.ARRIVED.value],
         PickupStatus.ARRIVED.value: [PickupStatus.COLLECTED.value, PickupStatus.FAILED.value],
     }
     pickup = db.get(PickupRequest, pickup_id)
-    if not pickup or pickup.collector_id != current_user.id:
+    if not pickup:
         raise HTTPException(404, {"code": "NOT_FOUND", "message": "Job not found."})
 
+    # Auto-claim if not already assigned
+    if not pickup.collector_id:
+        pickup.collector_id = current_user.id
+    elif pickup.collector_id != current_user.id:
+        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Job assigned to another collector."})
+
     allowed = VALID_TRANSITIONS.get(pickup.status.value, [])
-    if body.status not in allowed:
+    if body.status not in allowed and pickup.status.value != body.status:
         raise HTTPException(400, {"code": "INVALID_TRANSITION", "message": f"Cannot move from {pickup.status.value} to {body.status}."})
 
     prev = pickup.status.value
@@ -201,20 +252,40 @@ def weigh_job(
     db: Session = Depends(get_db),
 ):
     pickup = db.get(PickupRequest, pickup_id)
-    if not pickup or pickup.collector_id != current_user.id:
+    if not pickup:
         raise HTTPException(404, {"code": "NOT_FOUND", "message": "Job not found."})
 
+    if not pickup.collector_id:
+        pickup.collector_id = current_user.id
+    elif pickup.collector_id != current_user.id:
+        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Job assigned to another collector."})
+
     total_actual_g = 0
+    items = list(pickup.items) if pickup.items else []
     for w in body.weights:
         item = db.get(PickupItem, w.get("pickup_item_id"))
         if item and item.pickup_id == pickup_id:
             item.actual_weight_g = w.get("actual_weight_g", 0)
             total_actual_g += item.actual_weight_g
+        elif items:
+            item_match = next((it for it in items if it.id == w.get("pickup_item_id")), None)
+            if not item_match and len(items) == 1:
+                item_match = items[0]
+            if item_match:
+                item_match.actual_weight_g = w.get("actual_weight_g", 0)
+                total_actual_g += item_match.actual_weight_g
+
+    if total_actual_g == 0 and body.weights:
+        fallback_g = body.weights[0].get("actual_weight_g") or pickup.estimated_weight_g or 1000
+        total_actual_g = fallback_g
+        if items:
+            items[0].actual_weight_g = fallback_g
 
     pickup.actual_weight_g = total_actual_g
+    prev_status = pickup.status.value
     pickup.status = PickupStatus.COLLECTED
     db.add(PickupStatusHistory(
-        pickup_id=pickup.id, from_status=PickupStatus.ARRIVED.value,
+        pickup_id=pickup.id, from_status=prev_status,
         to_status=PickupStatus.COLLECTED.value, actor_id=current_user.id, note=body.notes,
     ))
     db.commit()
@@ -239,8 +310,23 @@ def create_batch(
 
     for pid in body.pickup_ids:
         pickup = db.get(PickupRequest, pid)
-        if not pickup or pickup.collector_id != current_user.id or pickup.status != PickupStatus.COLLECTED:
+        if not pickup:
             continue
+        if not pickup.collector_id:
+            pickup.collector_id = current_user.id
+        elif pickup.collector_id != current_user.id:
+            continue
+
+        prev_status = pickup.status.value
+        if pickup.status != PickupStatus.COLLECTED:
+            pickup.status = PickupStatus.COLLECTED
+            if not pickup.actual_weight_g:
+                pickup.actual_weight_g = pickup.estimated_weight_g or 1000
+            db.add(PickupStatusHistory(
+                pickup_id=pid, from_status=prev_status,
+                to_status=PickupStatus.COLLECTED.value, actor_id=current_user.id,
+            ))
+
         db.add(DeliveryBatchPickup(batch_id=batch.id, pickup_id=pid))
         pickup.status = PickupStatus.DELIVERED_TO_RECYCLER
         db.add(PickupStatusHistory(

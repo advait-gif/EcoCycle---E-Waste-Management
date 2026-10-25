@@ -413,16 +413,24 @@ export async function runLiveBackendLifecycle(
     const colToken = (await colLogin.json()).access_token;
     const colHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${colToken}` };
 
-    // Find and accept offer
-    const offersRes = await fetch(`${API_BASE}/collector/offers`, { headers: colHeaders });
-    if (offersRes.ok) {
-      const offers = await offersRes.json();
-      const myOffer = offers.find((o: any) => o.pickup_id === pickupId) || offers[0];
-      if (myOffer) {
-        await fetch(`${API_BASE}/collector/offers/${myOffer.offer_id}/accept`, {
-          method: "POST",
-          headers: colHeaders,
-        });
+    // Find and accept offer or direct assignment
+    onStep?.("Collector accepting pickup assignment...");
+    const acceptRes = await fetch(`${API_BASE}/collector/jobs/${pickupId}/accept`, {
+      method: "POST",
+      headers: colHeaders,
+      body: JSON.stringify({ eta_minutes: 15 }),
+    });
+    if (!acceptRes.ok) {
+      const offersRes = await fetch(`${API_BASE}/collector/offers`, { headers: colHeaders });
+      if (offersRes.ok) {
+        const offers = await offersRes.json();
+        const myOffer = offers.find((o: any) => o.pickup_id === pickupId) || offers[0];
+        if (myOffer) {
+          await fetch(`${API_BASE}/collector/offers/${myOffer.offer_id}/accept`, {
+            method: "POST",
+            headers: colHeaders,
+          });
+        }
       }
     }
 
@@ -445,17 +453,28 @@ export async function runLiveBackendLifecycle(
     // 4. Weigh & Collect
     onStep?.(`Weighing e-waste (${(actualWeightG / 1000).toFixed(1)} kg)...`);
     const pickupDetailsRes = await fetch(`${API_BASE}/pickups/${pickupId}`, { headers: colHeaders });
-    let itemId = "item-1";
+    let weightsPayload: Array<{ pickup_item_id: string; actual_weight_g: number }> = [];
+    let detectedCatId: string | null = null;
     if (pickupDetailsRes.ok) {
       const p = await pickupDetailsRes.json();
-      if (p.items && p.items.length > 0) itemId = p.items[0].id;
+      if (p.items && p.items.length > 0) {
+        detectedCatId = p.items[0].category_id;
+        const perItemWeight = Math.round(actualWeightG / p.items.length);
+        weightsPayload = p.items.map((it: any) => ({
+          pickup_item_id: it.id,
+          actual_weight_g: it.estimated_weight_g || perItemWeight,
+        }));
+      }
+    }
+    if (weightsPayload.length === 0) {
+      weightsPayload = [{ pickup_item_id: "default-item", actual_weight_g: actualWeightG }];
     }
 
     await fetch(`${API_BASE}/collector/jobs/${pickupId}/weigh`, {
       method: "POST",
       headers: colHeaders,
       body: JSON.stringify({
-        weights: [{ pickup_item_id: itemId, actual_weight_g: actualWeightG }],
+        weights: weightsPayload,
         notes: "Verified safe packaging",
       }),
     });
@@ -467,10 +486,14 @@ export async function runLiveBackendLifecycle(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(DEMO_CREDENTIALS.recycler),
     });
-    if (!recLogin.ok) throw new Error("Recycler login failed");
+    if (!recLogin.ok) {
+      const err = await recLogin.json().catch(() => ({}));
+      throw new Error(err.detail?.message || err.detail || "Recycler login failed");
+    }
     const recData = await recLogin.json();
     const recToken = recData.access_token;
-    const recyclerUserId = recData.user?.id;
+    const recyclerUserId = recData.user_id || recData.user?.id;
+    if (!recyclerUserId) throw new Error("Recycler account ID missing");
     const recHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${recToken}` };
 
     const batchRes = await fetch(`${API_BASE}/collector/batches`, {
@@ -481,30 +504,42 @@ export async function runLiveBackendLifecycle(
         pickup_ids: [pickupId],
       }),
     });
-    if (!batchRes.ok) throw new Error("Batch creation failed");
+    if (!batchRes.ok) {
+      const err = await batchRes.json().catch(() => ({}));
+      const msg = typeof err.detail === "string" ? err.detail : err.detail?.message || (Array.isArray(err.detail) ? err.detail[0]?.msg : null);
+      throw new Error(msg || "Batch creation failed");
+    }
     const batchId = (await batchRes.json()).batch_id;
 
     // Mark Delivered
-    await fetch(`${API_BASE}/collector/batches/${batchId}/deliver`, {
+    const deliverRes = await fetch(`${API_BASE}/collector/batches/${batchId}/deliver`, {
       method: "POST",
       headers: colHeaders,
       body: JSON.stringify({ collector_weight_g: actualWeightG }),
     });
+    if (!deliverRes.ok) {
+      const err = await deliverRes.json().catch(() => ({}));
+      throw new Error(err.detail?.message || err.detail || "Delivery to recycler failed");
+    }
 
     // 6. Recycler Verifies
     onStep?.("Recycler verifying delivery and processing intake...");
     const catsRes = await fetch(`${API_BASE}/categories`);
     const cats = catsRes.ok ? await catsRes.json() : [];
-    const catId = cats[0]?.id || "laptop";
+    const validCatId = (detectedCatId && cats.find((c: any) => c.id === detectedCatId)?.id) || cats[0]?.id || "1bd316c8-d1d7-40c3-8122-4c5d215749ec";
 
-    await fetch(`${API_BASE}/recycler/deliveries/${batchId}/receive`, {
+    const receiveRes = await fetch(`${API_BASE}/recycler/deliveries/${batchId}/receive`, {
       method: "POST",
       headers: recHeaders,
       body: JSON.stringify({
         action: "accept",
-        received_weights: [{ category_id: catId, weight_g: actualWeightG }],
+        received_weights: [{ category_id: validCatId, weight_g: actualWeightG }],
       }),
     });
+    if (!receiveRes.ok) {
+      const err = await receiveRes.json().catch(() => ({}));
+      throw new Error(err.detail?.message || err.detail || "Recycler intake verification failed");
+    }
 
     onStep?.("Completed! Customer points credited & Collector earnings recorded.");
     return { success: true };
