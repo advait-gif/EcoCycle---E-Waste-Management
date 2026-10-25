@@ -35,8 +35,8 @@ dist-ssr
 __pycache__/
 *.py[cod]
 backend/.env
-backend/*.db
-backend/*.db-*
+*.db
+*.db-*
 backend/uploads/
 backend/.pytest_cache/
 .pytest_cache/
