@@ -122,11 +122,11 @@ export function GoogleAuthPromptModal({ forceOpen = false, onClose }: GoogleAuth
           <GoogleSignInButton
             onSuccess={handleAuthSuccess}
             text="continue_with"
-            promptOneTap={true}
+            promptOneTap={false}
           />
 
           <div className="text-[11px] text-muted-foreground">
-            Official Google OAuth 2.0 with One-Tap instant authentication.
+            Fast Google Sign-In with 1-click verified accounts.
           </div>
         </div>
 

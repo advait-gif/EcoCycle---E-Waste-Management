@@ -190,10 +190,10 @@ function LoginPage() {
                 }}
                 onError={(err) => setError(err)}
                 text={mode === "login" ? "signin_with" : "signup_with"}
-                promptOneTap={true}
+                promptOneTap={false}
               />
               <div className="text-[11px] text-muted-foreground">
-                Official Google Identity authentication with One-Tap sign-in.
+                Fast Google Sign-In with 1-click verified accounts.
               </div>
             </div>
 
