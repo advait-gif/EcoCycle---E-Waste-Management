@@ -13,6 +13,8 @@ import {
   apiFetch,
 } from "@/lib/api";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { SupabaseGoogleAuthButton } from "@/components/auth/SupabaseGoogleAuthButton";
+import { signOutSupabase, listenToSupabaseAuth } from "@/lib/supabase";
 import { registerCustomer } from "@/lib/simulation/engine";
 
 export const Route = createFileRoute("/login")({
@@ -108,6 +110,7 @@ function LoginPage() {
 
   const handleLogout = () => {
     logout();
+    signOutSupabase();
     setCurrentUser(null);
   };
 
@@ -119,7 +122,7 @@ function LoginPage() {
         </h1>
         <SectionNote>
           {isOnline
-            ? "⚡ Live FastAPI Authentication with Argon2id Password Hashing & JWT Sessions."
+            ? "⚡ Live FastAPI Authentication & Supabase Google Identity Management."
             : "Backend service is reconnecting. Live database session will retry automatically."}
         </SectionNote>
       </header>
@@ -180,22 +183,20 @@ function LoginPage() {
               </div>
             ) : null}
 
-            {/* Google Authentication Box */}
-            <div className="mb-6 rounded-2xl border-2 border-dashed border-leaf/40 bg-leaf/5 p-4 text-center space-y-3">
-              <div className="text-xs font-bold uppercase tracking-wider text-leaf">
-                Real Google Sign-In
+            {/* Supabase Google Authentication Box */}
+            <div className="mb-6 rounded-2xl border-2 border-dashed border-emerald-500/40 bg-emerald-500/5 p-4 text-center space-y-3">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                <span>⚡</span> Supabase Google Authentication
               </div>
-              <GoogleSignInButton
+              <SupabaseGoogleAuthButton
                 onSuccess={(u) => {
                   setCurrentUser(u);
                   navigate({ to: "/" });
                 }}
                 onError={(err) => setError(err)}
-                text={mode === "login" ? "signin_with" : "signup_with"}
-                promptOneTap={false}
               />
               <div className="text-[11px] text-muted-foreground">
-                Fast Google Sign-In with 1-click verified accounts.
+                Google OAuth powered by Supabase Auth with automatic backend session synchronization.
               </div>
             </div>
 

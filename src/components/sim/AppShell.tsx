@@ -6,6 +6,7 @@ import { useBackend } from "@/hooks/use-backend";
 import { GoogleAuthPromptModal } from "@/components/auth/GoogleAuthPromptModal";
 import { GoogleIcon } from "@/components/auth/GoogleIcon";
 import { getToken, getMe, logout } from "@/lib/api";
+import { signOutSupabase } from "@/lib/supabase";
 
 const NAV = [
   { to: "/", label: "Dashboard" },
@@ -128,7 +129,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <button
                     type="button"
                     title="Sign Out of EcoCycle"
-                    onClick={() => logout()}
+                    onClick={() => {
+                      logout();
+                      signOutSupabase();
+                    }}
                     className="rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-coral/10 hover:text-coral hover:border-coral transition-colors cursor-pointer"
                   >
                     Sign Out

@@ -54,6 +54,9 @@ export function useBackend() {
 
   const logoutUser = () => {
     logout();
+    try {
+      import("@/lib/supabase").then(({ signOutSupabase }) => signOutSupabase());
+    } catch {}
     setCurrentRole("");
   };
 

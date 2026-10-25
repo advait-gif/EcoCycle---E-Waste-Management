@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { GoogleSignInButton } from "./GoogleSignInButton";
+import { SupabaseGoogleAuthButton } from "./SupabaseGoogleAuthButton";
 import { GoogleIcon } from "./GoogleIcon";
 import { getToken, getMe } from "@/lib/api";
 import { useBackend } from "@/hooks/use-backend";
@@ -99,20 +99,18 @@ export function GoogleAuthPromptModal({ forceOpen = false, onClose }: GoogleAuth
           </p>
         </div>
 
-        {/* Google Real Sign-in Action Box */}
-        <div className="mt-6 rounded-2xl border-2 border-dashed border-leaf/40 bg-leaf/5 p-5 text-center space-y-4">
-          <div className="text-xs font-bold tracking-wide uppercase text-leaf">
-            ⚡ Primary Sign-In Method
+        {/* Supabase Google Real Sign-in Action Box */}
+        <div className="mt-6 rounded-2xl border-2 border-dashed border-emerald-500/40 bg-emerald-500/5 p-5 text-center space-y-4">
+          <div className="flex items-center justify-center gap-1.5 text-xs font-bold tracking-wide uppercase text-emerald-700 dark:text-emerald-400">
+            <span>⚡</span> Supabase Google Authentication
           </div>
 
-          <GoogleSignInButton
+          <SupabaseGoogleAuthButton
             onSuccess={handleAuthSuccess}
-            text="continue_with"
-            promptOneTap={false}
           />
 
           <div className="text-[11px] text-muted-foreground">
-            Fast Google Sign-In with 1-click verified accounts.
+            Sign in with Google using Supabase Auth.
           </div>
         </div>
 
