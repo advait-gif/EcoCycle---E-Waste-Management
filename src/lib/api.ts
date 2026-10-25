@@ -178,6 +178,23 @@ export async function login(identifier: string, password: string): Promise<{ acc
   return data;
 }
 
+export async function googleAuth(payload: {
+  credential?: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+}): Promise<{ access_token: string; role: string; user_id: string; user?: any }> {
+  const data = await apiFetch<{ access_token: string; role: string; user_id: string; user?: any }>("/auth/google", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  setToken(data.access_token);
+  if (data.role) {
+    setStoredRole(data.role);
+  }
+  return data;
+}
+
 export async function ensureDemoLogin(role: "customer" | "collector" | "recycler" | "admin" = "customer"): Promise<string> {
   const creds = DEMO_CREDENTIALS[role];
   try {

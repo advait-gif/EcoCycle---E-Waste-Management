@@ -1,9 +1,13 @@
+import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { launchDemo } from "@/lib/simulation/engine";
 import { useSim, useSimulationLoop } from "@/lib/simulation/react";
 import { simClock } from "@/lib/simulation/format";
 import { useBackend } from "@/hooks/use-backend";
+import { GoogleAuthPromptModal } from "@/components/auth/GoogleAuthPromptModal";
+import { GoogleIcon } from "@/components/auth/GoogleIcon";
+import { getToken, getMe } from "@/lib/api";
 
 const NAV = [
   { to: "/", label: "Dashboard" },
@@ -18,11 +22,27 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const s = useSim();
+  const [mounted, setMounted] = useState(false);
   const { isOnline, currentRole } = useBackend();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   useSimulationLoop();
+
+  useEffect(() => {
+    setMounted(true);
+    if (getToken()) {
+      getMe().then(setCurrentUser).catch(() => setCurrentUser(null));
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* Welcome Google Auth Prompt Modal — appears at start when unauthenticated */}
+      <GoogleAuthPromptModal
+        forceOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
+
       <div className="bg-ink text-ink-foreground">
         <div className="mx-auto flex max-w-[1440px] items-center gap-3 px-6 py-2.5 text-[13px]">
           {isOnline ? (
@@ -85,13 +105,35 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               Launch Demo
             </button>
-            <Link
-              to="/login"
-              className="font-display inline-flex items-center gap-1.5 rounded-full border-2 border-border bg-cream px-3 py-2 text-xs font-bold text-ink hover:bg-lime/30 transition-all active:translate-y-0.5"
-            >
-              <span>👤</span>
-              <span className="hidden sm:inline">{currentRole || "Sign In"}</span>
-            </Link>
+
+            {/* Google Authentication Trigger in Header */}
+            {mounted && !currentUser && !getToken() ? (
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(true)}
+                className="font-display inline-flex items-center gap-2 rounded-full border-2 border-border bg-white px-3.5 py-2 text-xs font-bold text-[#3c4043] shadow-sm hover:bg-cream hover:border-leaf transition-all active:translate-y-0.5"
+              >
+                <GoogleIcon className="size-4 shrink-0" />
+                <span className="hidden sm:inline">Sign in with Google</span>
+                <span className="sm:hidden">Google</span>
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                className="font-display inline-flex items-center gap-2 rounded-full border-2 border-border bg-cream px-3 py-1.5 text-xs font-bold text-ink hover:bg-lime/30 transition-all active:translate-y-0.5"
+              >
+                {mounted && currentUser?.picture ? (
+                  <img
+                    src={currentUser.picture}
+                    alt={currentUser?.name || "Avatar"}
+                    className="size-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <span>👤</span>
+                )}
+                <span className="max-w-[110px] truncate">{mounted ? (currentUser?.name || currentRole || "Account") : "Sign In"}</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>

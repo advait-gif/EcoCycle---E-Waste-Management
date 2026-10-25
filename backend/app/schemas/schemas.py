@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pydantic v2 schemas — request/response DTOs for EcoCycle API.
 """
 from __future__ import annotations
@@ -58,7 +58,15 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     role: str
     user_id: str
+    user: Optional[dict] = None
     mfa_required: bool = False
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    picture: Optional[str] = None
 
 
 class RefreshRequest(BaseModel):

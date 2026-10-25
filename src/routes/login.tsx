@@ -11,6 +11,7 @@ import {
   setStoredRole,
   apiFetch,
 } from "@/lib/api";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -176,6 +177,34 @@ function LoginPage() {
                 {error}
               </div>
             ) : null}
+
+            {/* Google Authentication Box */}
+            <div className="mb-6 rounded-2xl border-2 border-dashed border-leaf/40 bg-leaf/5 p-4 text-center space-y-3">
+              <div className="text-xs font-bold uppercase tracking-wider text-leaf">
+                Real Google Sign-In
+              </div>
+              <GoogleSignInButton
+                onSuccess={(u) => {
+                  setCurrentUser(u);
+                  navigate({ to: "/" });
+                }}
+                onError={(err) => setError(err)}
+                text={mode === "login" ? "signin_with" : "signup_with"}
+                promptOneTap={true}
+              />
+              <div className="text-[11px] text-muted-foreground">
+                Official Google Identity authentication with One-Tap sign-in.
+              </div>
+            </div>
+
+            <div className="relative mb-6 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border" />
+              </div>
+              <span className="relative bg-card px-3 text-[11px] font-semibold text-muted-foreground uppercase">
+                Or continue with password
+              </span>
+            </div>
 
             {mode === "login" ? (
               <form onSubmit={handleLogin} className="space-y-4">

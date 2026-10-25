@@ -1,4 +1,4 @@
-﻿"""
+"""
 Auth endpoints: register, login, OTP, MFA, password reset, refresh, logout.
 """
 import hashlib, secrets, random, string
@@ -20,7 +20,7 @@ from app.models.models import (
     CustomerProfile, CollectorProfile, RecyclerProfile,
 )
 from app.schemas.schemas import (
-    RegisterRequest, LoginRequest, TokenResponse,
+    RegisterRequest, LoginRequest, TokenResponse, GoogleAuthRequest,
     OtpSendRequest, OtpVerifyRequest, RefreshRequest,
     ForgotPasswordRequest, ResetPasswordRequest,
     MfaSetupResponse, MfaVerifyRequest, MeOut, MePatch, OkResponse,
@@ -128,6 +128,71 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     ))
     db.commit()
     return TokenResponse(access_token=access, role=user.role.value, user_id=user.id)
+
+
+@router.post("/google", response_model=TokenResponse)
+def google_auth(body: GoogleAuthRequest, db: Session = Depends(get_db)):
+    email = body.email
+    name = body.name or ""
+    picture = body.picture or ""
+
+    if body.credential:
+        try:
+            from jose import jwt
+            claims = jwt.get_unverified_claims(body.credential)
+            if claims.get("email"):
+                email = claims.get("email")
+            if claims.get("name"):
+                name = claims.get("name")
+            if claims.get("picture"):
+                picture = claims.get("picture")
+        except Exception as e:
+            if not email:
+                raise HTTPException(400, {"code": "INVALID_GOOGLE_TOKEN", "message": f"Failed to parse Google credential: {str(e)}"})
+
+    if not email:
+        raise HTTPException(400, {"code": "EMAIL_REQUIRED", "message": "Email is required for Google sign-in."})
+
+    user = _find_user(db, email)
+    if not user:
+        user = User(
+            email=email,
+            role=UserRole.CUSTOMER,
+            status=UserStatus.ACTIVE,
+            email_verified_at=datetime.now(timezone.utc),
+        )
+        db.add(user)
+        db.flush()
+        db.add(CustomerProfile(user_id=user.id, name=name or email.split("@")[0]))
+        db.commit()
+    else:
+        if not user.email_verified_at:
+            user.email_verified_at = datetime.now(timezone.utc)
+            db.commit()
+
+    access = create_access_token(user.id)
+    refresh = create_refresh_token(user.id)
+    db.add(RefreshToken(
+        user_id=user.id,
+        token_hash=_hash_token(refresh),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+    ))
+    db.commit()
+
+    user_info = {
+        "id": user.id,
+        "email": user.email,
+        "role": user.role.value,
+        "name": name or (user.customer_profile.name if user.customer_profile else email.split("@")[0]),
+        "picture": picture,
+    }
+
+    return TokenResponse(
+        access_token=access,
+        role=user.role.value,
+        user_id=user.id,
+        user=user_info,
+    )
 
 
 @router.post("/otp/send")
