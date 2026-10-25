@@ -7,7 +7,7 @@ const API_HOST = typeof window !== "undefined" && window.location.hostname
   ? `http://${window.location.hostname}:8000`
   : "http://localhost:8000";
 
-export const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || `${API_HOST}/api/v1`;
+export const API_BASE = (typeof import.meta !== "undefined" && (import.meta.env?.['VITE_API_URL'] as string | undefined)) || `${API_HOST}/api/v1`;
 export const HEALTH_URL = `${API_HOST}/health`;
 
 // Default demo credentials created by seed.py
@@ -96,6 +96,26 @@ export interface ApiOverviewStats {
   total_weight_kg: number;
   points_issued: number;
   open_disputes: number;
+}
+
+export interface ApiComplaint {
+  id: string;
+  pickup_id: string;
+  category: string;
+  description?: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface ApiRecyclingCertificate {
+  certificate_id: string;
+  pickup_id: string;
+  verification_hash: string;
+  status: string;
+  weight_kg: number;
+  item_count: number;
+  issued_at: string;
+  co2e_avoided_kg: number;
 }
 
 // Token management
@@ -317,6 +337,30 @@ export async function getRewardsWallet(): Promise<ApiWallet> {
 export async function getRewardsLedger(): Promise<ApiLedgerEntry[]> {
   return apiFetch<ApiLedgerEntry[]>("/rewards/ledger");
 }
+
+/* ------------------------------------------------------------------ */
+/* Complaints & Certificates API                                      */
+/* ------------------------------------------------------------------ */
+
+export async function raiseComplaint(pickupId: string, category: string, description?: string): Promise<ApiComplaint> {
+  return apiFetch<ApiComplaint>("/complaints", {
+    method: "POST",
+    body: JSON.stringify({ pickup_id: pickupId, category, description }),
+  });
+}
+
+export async function getComplaints(): Promise<ApiComplaint[]> {
+  return apiFetch<ApiComplaint[]>("/complaints");
+}
+
+export async function getCertificates(): Promise<ApiRecyclingCertificate[]> {
+  return apiFetch<ApiRecyclingCertificate[]>("/certificates");
+}
+
+export async function getCertificate(pickupId: string): Promise<ApiRecyclingCertificate> {
+  return apiFetch<ApiRecyclingCertificate>(`/certificates/${pickupId}`);
+}
+
 
 /* ------------------------------------------------------------------ */
 /* Admin & Analytics API                                              */

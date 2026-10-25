@@ -101,7 +101,10 @@ function PickupsPage() {
     return {
       id: bp.id.length > 15 ? `PK-${bp.id.slice(0, 8)}` : bp.id,
       customerId: bp.customer_id,
-      addressId: bp.address_id,
+      centerId: "center-indiranagar",
+      auto: false,
+      progress: 100,
+      nextStepAt: 0,
       status: mapBackendStatusToSim(bp.status),
       estimatedKg: estKg,
       actualKg: actKg,
@@ -158,8 +161,11 @@ function PickupsPage() {
           };
         });
 
+        const targetAddressId = addresses[0]?.id;
+        if (!targetAddressId) throw new Error("No pickup address available");
+
         const created = await createBackendPickup({
-          address_id: addresses[0].id,
+          address_id: targetAddressId,
           items: apiItems,
           notes: "Scheduled via EcoCycle Dashboard",
           data_wipe_acknowledged: true,

@@ -360,7 +360,21 @@ class ComplaintOut(BaseModel):
     pickup_id: str
     category: str
     status: str
+    description: Optional[str] = None
     created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class RecyclingCertificateOut(BaseModel):
+    certificate_id: str
+    pickup_id: str
+    verification_hash: str
+    status: str
+    weight_kg: float
+    item_count: int
+    issued_at: datetime
+    co2e_avoided_kg: float
 
     model_config = {"from_attributes": True}
 

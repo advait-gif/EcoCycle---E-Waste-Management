@@ -14,12 +14,13 @@ from app.models.models import (
     User, UserRole, Address, EwasteCategory,
     PickupRequest, PickupItem, PickupStatusHistory, PickupStatus,
     PickupOffer, OfferResponse, VerificationStatus,
-    RewardLedger, Notification, Complaint, CollectorProfile,
+    RewardLedger, Notification, Complaint, ComplaintStatus, CollectorProfile,
 )
 from app.schemas.schemas import (
     AddressIn, AddressOut, CategoryOut,
     PickupCreateRequest, PickupOut, PickupCancelRequest,
-    HandoverConfirmRequest, RatingCreate, ComplaintCreate,
+    HandoverConfirmRequest, RatingCreate, ComplaintCreate, ComplaintOut,
+    RecyclingCertificateOut,
     RewardWalletOut, NotificationOut,
 )
 from app.api.deps import get_current_user, require_roles
@@ -386,7 +387,7 @@ def get_notifications(
 # Complaints
 # ---------------------------------------------------------------------------
 
-@router.post("/complaints", response_model=ComplaintCreate, status_code=201)
+@router.post("/complaints", response_model=ComplaintOut, status_code=201)
 def raise_complaint(
     body: ComplaintCreate,
     current_user: User = Depends(require_roles("CUSTOMER")),
@@ -395,16 +396,139 @@ def raise_complaint(
     pickup = db.get(PickupRequest, body.pickup_id)
     if not pickup or pickup.customer_id != current_user.id:
         raise HTTPException(404, {"code": "NOT_FOUND", "message": "Pickup not found."})
-    c = Complaint(pickup_id=body.pickup_id, raised_by=current_user.id, category=body.category, description=body.description)
+    c = Complaint(
+        pickup_id=body.pickup_id,
+        raised_by=current_user.id,
+        category=body.category,
+        description=body.description,
+        status=ComplaintStatus.OPEN,
+    )
     db.add(c)
     db.commit()
-    return body
+    db.refresh(c)
+    return ComplaintOut(
+        id=c.id,
+        pickup_id=c.pickup_id,
+        category=c.category,
+        description=c.description,
+        status=c.status.value if hasattr(c.status, "value") else str(c.status),
+        created_at=c.created_at,
+    )
 
 
-@router.get("/complaints")
-def list_complaints(current_user: User = Depends(require_roles("CUSTOMER")), db: Session = Depends(get_db)):
+@router.get("/complaints", response_model=list[ComplaintOut])
+def list_complaints(
+    current_user: User = Depends(require_roles("CUSTOMER")),
+    db: Session = Depends(get_db),
+):
     rows = db.execute(
-        select(Complaint).where(Complaint.raised_by == current_user.id)
+        select(Complaint)
+        .where(Complaint.raised_by == current_user.id)
         .order_by(Complaint.created_at.desc())
     ).scalars().all()
-    return [{"id": r.id, "pickup_id": r.pickup_id, "category": r.category, "status": r.status.value} for r in rows]
+    return [
+        ComplaintOut(
+            id=r.id,
+            pickup_id=r.pickup_id,
+            category=r.category,
+            description=r.description,
+            status=r.status.value if hasattr(r.status, "value") else str(r.status),
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/complaints/{complaint_id}", response_model=ComplaintOut)
+def get_complaint(
+    complaint_id: str,
+    current_user: User = Depends(require_roles("CUSTOMER")),
+    db: Session = Depends(get_db),
+):
+    c = db.get(Complaint, complaint_id)
+    if not c or c.raised_by != current_user.id:
+        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Complaint not found."})
+    return ComplaintOut(
+        id=c.id,
+        pickup_id=c.pickup_id,
+        category=c.category,
+        description=c.description,
+        status=c.status.value if hasattr(c.status, "value") else str(c.status),
+        created_at=c.created_at,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Recycling Certificates (Verified records)
+# ---------------------------------------------------------------------------
+
+@router.get("/certificates", response_model=list[RecyclingCertificateOut])
+def list_certificates(
+    current_user: User = Depends(require_roles("CUSTOMER")),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns verified recycling completion records/certificates for customer pickups
+    that have completed the recycling chain of custody.
+    """
+    rows = db.execute(
+        select(PickupRequest)
+        .options(selectinload(PickupRequest.items))
+        .where(
+            PickupRequest.customer_id == current_user.id,
+            PickupRequest.status.in_([PickupStatus.COMPLETED, PickupStatus.RECYCLER_VERIFIED])
+        )
+        .order_by(PickupRequest.updated_at.desc())
+    ).scalars().all()
+
+    certs = []
+    for p in rows:
+        weight_kg = (p.actual_weight_g or p.estimated_weight_g or 0) / 1000.0
+        cert_hash = hashlib.sha256(f"{p.id}:{current_user.id}:{p.completed_at or p.updated_at}".encode()).hexdigest()[:16]
+        certs.append(
+            RecyclingCertificateOut(
+                certificate_id=f"ECO-CERT-{p.id[:8].upper()}",
+                pickup_id=p.id,
+                verification_hash=cert_hash,
+                status=p.status.value if hasattr(p.status, "value") else str(p.status),
+                weight_kg=round(weight_kg, 2),
+                item_count=len(p.items),
+                issued_at=p.completed_at or p.updated_at,
+                co2e_avoided_kg=round(weight_kg * 1.85, 2),
+            )
+        )
+    return certs
+
+
+@router.get("/certificates/{pickup_id}", response_model=RecyclingCertificateOut)
+def get_certificate(
+    pickup_id: str,
+    current_user: User = Depends(require_roles("CUSTOMER")),
+    db: Session = Depends(get_db),
+):
+    p = db.execute(
+        select(PickupRequest)
+        .options(selectinload(PickupRequest.items))
+        .where(
+            PickupRequest.id == pickup_id,
+            PickupRequest.customer_id == current_user.id,
+            PickupRequest.status.in_([PickupStatus.COMPLETED, PickupStatus.RECYCLER_VERIFIED])
+        )
+    ).scalar_one_or_none()
+
+    if not p:
+        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Verified recycling record not found."})
+
+    weight_kg = (p.actual_weight_g or p.estimated_weight_g or 0) / 1000.0
+    cert_hash = hashlib.sha256(f"{p.id}:{current_user.id}:{p.completed_at or p.updated_at}".encode()).hexdigest()[:16]
+    return RecyclingCertificateOut(
+        certificate_id=f"ECO-CERT-{p.id[:8].upper()}",
+        pickup_id=p.id,
+        verification_hash=cert_hash,
+        status=p.status.value if hasattr(p.status, "value") else str(p.status),
+        weight_kg=round(weight_kg, 2),
+        item_count=len(p.items),
+        issued_at=p.completed_at or p.updated_at,
+        co2e_avoided_kg=round(weight_kg * 1.85, 2),
+    )
+

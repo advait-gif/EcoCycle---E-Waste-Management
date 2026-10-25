@@ -40,6 +40,7 @@ export function GoogleAuthPromptModal({ forceOpen = false, onClose }: GoogleAuth
     } else {
       getMe().then(setUser).catch(() => {});
     }
+    return undefined;
   }, [forceOpen]);
 
   const handleDismiss = () => {

@@ -31,7 +31,7 @@ export function GoogleSignInButton({
   const [gisRendered, setGisRendered] = useState(false);
 
   const clientId =
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_GOOGLE_CLIENT_ID) ||
+    (typeof import.meta !== "undefined" && (import.meta.env?.['VITE_GOOGLE_CLIENT_ID'] as string | undefined)) ||
     "958372615482-ecocycledemo.apps.googleusercontent.com";
 
   const handleCredentialResponse = async (response: any) => {
@@ -108,9 +108,9 @@ export function GoogleSignInButton({
   }, [clientId, promptOneTap, text]);
 
   const handleManualGoogleAuth = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
     const emailToUse = googleEmail.trim() || "ecocycle.user@gmail.com";
-    const nameToUse = googleName.trim() || emailToUse.split("@")[0].replace(".", " ");
+    const prefix = emailToUse.split("@")[0] ?? "user";
+    const nameToUse = googleName.trim() || prefix.replace(".", " ");
     
     setLoading(true);
     try {

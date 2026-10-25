@@ -69,7 +69,7 @@ function ControlPage() {
                 className="rounded-2xl bg-cream p-3 text-left transition-transform active:translate-y-0.5"
               >
                 <div className="text-sm font-bold">{sc.name}</div>
-                <div className="text-[11px] text-muted-foreground">{sc.description}</div>
+                <div className="text-[11px] text-muted-foreground">{sc.desc}</div>
               </button>
             ))}
           </div>

@@ -61,16 +61,20 @@ function Dashboard() {
   const handleRunSimulation = async () => {
     if (isOnline && backendPickups.length > 0) {
       const targetPickup = backendPickups.find((p) => p.status !== "COMPLETED") || backendPickups[0];
-      setLifecycleStep("Starting live backend lifecycle...");
-      const res = await runLiveBackendLifecycle(
-        targetPickup.id,
-        targetPickup.estimated_weight_g || 4800,
-        (step) => setLifecycleStep(step),
-      );
-      getAnalyticsOverview().then(setBackendStats).catch(console.warn);
-      getBackendPickups().then(setBackendPickups).catch(console.warn);
-      setTimeout(() => setLifecycleStep(null), 3500);
-      if (!res.success && pickup) {
+      if (targetPickup) {
+        setLifecycleStep("Starting live backend lifecycle...");
+        const res = await runLiveBackendLifecycle(
+          targetPickup.id,
+          targetPickup.estimated_weight_g || 4800,
+          (step) => setLifecycleStep(step),
+        );
+        getAnalyticsOverview().then(setBackendStats).catch(console.warn);
+        getBackendPickups().then(setBackendPickups).catch(console.warn);
+        setTimeout(() => setLifecycleStep(null), 3500);
+        if (!res.success && pickup) {
+          runPickupSimulation(pickup.id);
+        }
+      } else if (pickup) {
         runPickupSimulation(pickup.id);
       }
     } else if (pickup) {

@@ -241,3 +241,79 @@ def test_reward_service_calculate_points():
 def test_reward_service_calculate_points_zero():
     from app.services.reward_service import calculate_points_for_pickup
     assert calculate_points_for_pickup(None, None, 0) == 0
+
+
+# ---------------------------------------------------------------------------
+# Complaints and Certificates tests
+# ---------------------------------------------------------------------------
+
+def test_customer_complaints_and_certificates(client):
+    # Register customer
+    client.post("/api/v1/auth/register", json={
+        "name": "Complaint Tester",
+        "email": "complainttester@example.demo",
+        "password": "Test@1234",
+        "role": "CUSTOMER",
+        "consent": True,
+    })
+    login = client.post("/api/v1/auth/login", json={
+        "identifier": "complainttester@example.demo",
+        "password": "Test@1234",
+    })
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Add address
+    addr_res = client.post("/api/v1/addresses", json={
+        "line1": "123 Green Way",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "pincode": "560001",
+        "is_default": True
+    }, headers=headers)
+    addr_id = addr_res.json()["id"]
+
+    # Get categories
+    cats = client.get("/api/v1/categories").json()
+    cat_id = cats[0]["id"]
+
+    # Create pickup
+    pickup_res = client.post("/api/v1/pickups", json={
+        "address_id": addr_id,
+        "slot_start": "2026-10-30T10:00:00Z",
+        "slot_end": "2026-10-30T12:00:00Z",
+        "items": [{"category_id": cat_id, "quantity": 1, "estimated_weight_g": 2000}],
+        "data_wipe_acknowledged": True,
+    }, headers=headers)
+    assert pickup_res.status_code == 201
+    pickup_id = pickup_res.json()["id"]
+
+    # Raise complaint
+    comp_res = client.post("/api/v1/complaints", json={
+        "pickup_id": pickup_id,
+        "category": "no_show",
+        "description": "Collector did not arrive on time.",
+    }, headers=headers)
+    assert comp_res.status_code == 201
+    comp_data = comp_res.json()
+    assert comp_data["pickup_id"] == pickup_id
+    assert comp_data["category"] == "no_show"
+    assert comp_data["status"] == "OPEN"
+    comp_id = comp_data["id"]
+
+    # List complaints
+    list_res = client.get("/api/v1/complaints", headers=headers)
+    assert list_res.status_code == 200
+    assert len(list_res.json()) >= 1
+    assert list_res.json()[0]["id"] == comp_id
+
+    # Get single complaint
+    get_res = client.get(f"/api/v1/complaints/{comp_id}", headers=headers)
+    assert get_res.status_code == 200
+    assert get_res.json()["id"] == comp_id
+
+    # Check certificates (currently empty for REQUESTED pickup)
+    certs_res = client.get("/api/v1/certificates", headers=headers)
+    assert certs_res.status_code == 200
+    assert certs_res.json() == []
+

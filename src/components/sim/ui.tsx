@@ -42,12 +42,14 @@ export function PopButton({
   tone = "ink",
   className,
   disabled,
+  type = "button",
 }: {
   children: ReactNode;
   onClick?: () => void;
   tone?: "ink" | "coral" | "lime" | "outline";
   className?: string;
   disabled?: boolean;
+  type?: "button" | "submit" | "reset";
 }) {
   const tones: Record<string, string> = {
     ink: "bg-ink text-ink-foreground shadow-pop-ink",
@@ -57,7 +59,7 @@ export function PopButton({
   };
   return (
     <button
-      type="button"
+      type={type}
       onClick={onClick}
       disabled={disabled}
       className={cn(
