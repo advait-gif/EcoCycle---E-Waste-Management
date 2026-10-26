@@ -16,7 +16,6 @@ from app.api.v1.router import api_router
 async def lifespan(app: FastAPI):
     # Create all tables on startup (dev convenience; use Alembic in prod)
     Base.metadata.create_all(bind=engine)
-    # Seed default categories if empty
     from app.core.database import SessionLocal
     from app.models.models import EwasteCategory
     from sqlalchemy import select
@@ -26,9 +25,102 @@ async def lifespan(app: FastAPI):
         if not count:
             _seed_categories(db)
             db.commit()
+        _seed_demo_users(db)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[lifespan] Startup seed notice: {e}")
     finally:
         db.close()
     yield
+
+
+def _seed_demo_users(db):
+    from app.core.security import hash_password
+    from app.models.models import User, UserRole, UserStatus, VerificationStatus, CollectorProfile, RecyclerProfile
+    from sqlalchemy import select
+
+    # 1. Admin
+    admin_email = "admin@ecocycle.demo"
+    if not db.execute(select(User).where(User.email == admin_email)).scalar_one_or_none():
+        admin = User(
+            email=admin_email,
+            password_hash=hash_password("Admin@1234"),
+            role=UserRole.ADMIN,
+            status=UserStatus.ACTIVE,
+        )
+        db.add(admin)
+
+    # 2. Collector
+    col_email = "collector@test.demo"
+    col_user = db.execute(select(User).where(User.email == col_email)).scalar_one_or_none()
+    if not col_user:
+        col_user = User(
+            email=col_email,
+            password_hash=hash_password("Pass@1234"),
+            role=UserRole.COLLECTOR,
+            status=UserStatus.ACTIVE,
+        )
+        db.add(col_user)
+        db.flush()
+        db.add(CollectorProfile(
+            user_id=col_user.id,
+            name="Verified Collector Fleet",
+            verification_status=VerificationStatus.VERIFIED,
+            is_online=True,
+        ))
+    else:
+        col_user.password_hash = hash_password("Pass@1234")
+        col_user.status = UserStatus.ACTIVE
+        col_user.failed_login_attempts = 0
+        col_user.locked_until = None
+        cp = db.execute(select(CollectorProfile).where(CollectorProfile.user_id == col_user.id)).scalar_one_or_none()
+        if not cp:
+            db.add(CollectorProfile(
+                user_id=col_user.id,
+                name="Verified Collector Fleet",
+                verification_status=VerificationStatus.VERIFIED,
+                is_online=True,
+            ))
+        elif cp.verification_status != VerificationStatus.VERIFIED:
+            cp.verification_status = VerificationStatus.VERIFIED
+            cp.is_online = True
+
+    # 3. Recycler
+    rec_email = "recycler@test.demo"
+    rec_user = db.execute(select(User).where(User.email == rec_email)).scalar_one_or_none()
+    if not rec_user:
+        rec_user = User(
+            email=rec_email,
+            password_hash=hash_password("Pass@1234"),
+            role=UserRole.RECYCLER,
+            status=UserStatus.ACTIVE,
+        )
+        db.add(rec_user)
+        db.flush()
+        db.add(RecyclerProfile(
+            user_id=rec_user.id,
+            facility_name="Authorized CPCB Recycler",
+            address="Eco Recycling Park, Sector 4, New Delhi",
+            verification_status=VerificationStatus.VERIFIED,
+            categories_accepted='["laptop","mobile","tv","battery","charger","printer","refrigerator","washing_machine","other"]',
+        ))
+    else:
+        rec_user.password_hash = hash_password("Pass@1234")
+        rec_user.status = UserStatus.ACTIVE
+        rec_user.failed_login_attempts = 0
+        rec_user.locked_until = None
+        rp = db.execute(select(RecyclerProfile).where(RecyclerProfile.user_id == rec_user.id)).scalar_one_or_none()
+        if not rp:
+            db.add(RecyclerProfile(
+                user_id=rec_user.id,
+                facility_name="Authorized CPCB Recycler",
+                address="Eco Recycling Park, Sector 4, New Delhi",
+                verification_status=VerificationStatus.VERIFIED,
+                categories_accepted='["laptop","mobile","tv","battery","charger","printer","refrigerator","washing_machine","other"]',
+            ))
+        elif rp.verification_status != VerificationStatus.VERIFIED:
+            rp.verification_status = VerificationStatus.VERIFIED
 
 
 def _seed_categories(db):
@@ -63,6 +155,7 @@ _allowed_origins = [
     "http://localhost:5173",
     "http://localhost:4173",
     "http://localhost:8080",
+    "https://ecocycle-seven-tan.vercel.app",
 ]
 if hasattr(settings, "CORS_ORIGINS") and settings.CORS_ORIGINS:
     _allowed_origins.extend([o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()])

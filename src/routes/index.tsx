@@ -12,6 +12,8 @@ import { useBackend } from "@/hooks/use-backend";
 import {
   getAnalyticsOverview,
   getPickups as getBackendPickups,
+  getPublicStats,
+  type PublicStats,
   type ApiOverviewStats,
   type ApiPickup,
 } from "@/lib/api";
@@ -49,10 +51,12 @@ function DashboardPage() {
   const latestCert = s.certificates[0];
 
   const [backendStats, setBackendStats] = useState<ApiOverviewStats | null>(null);
+  const [publicStats, setPublicStats] = useState<PublicStats | null>(null);
   const [backendPickups, setBackendPickups] = useState<ApiPickup[]>([]);
 
   useEffect(() => {
     if (isOnline) {
+      getPublicStats().then(setPublicStats).catch(() => {});
       if (typeof window !== "undefined" && localStorage.getItem("ecocycle_current_role") === "ADMIN") {
         getAnalyticsOverview().then(setBackendStats).catch(() => {});
       }
@@ -60,9 +64,11 @@ function DashboardPage() {
     }
   }, [isOnline]);
 
-  const displayPickupsCount = backendStats?.total_pickups ?? (backendPickups.length || t.pickups);
-  const displayCollectedKg = backendStats?.total_weight_kg ?? t.collectedKg;
-  const displayPointsIssued = backendStats?.points_issued ?? t.points;
+  const displayPickupsCount = publicStats?.completed_pickups ?? backendStats?.total_pickups ?? (backendPickups.length || t.pickups);
+  const displayCollectedKg = publicStats?.collected_kg ?? backendStats?.total_weight_kg ?? t.collectedKg;
+  const displayPointsIssued = publicStats?.total_points ?? backendStats?.points_issued ?? t.points;
+  const displayRecoveryPct = publicStats?.recovery_rate_pct ?? t.recoveryPct;
+  const displayCo2e = publicStats?.co2e_kg ?? t.co2eKg;
 
   return (
     <div className="space-y-8">
@@ -117,7 +123,7 @@ function DashboardPage() {
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">E-Waste Diverted</div>
             </div>
             <div>
-              <div className="font-display text-3xl font-extrabold text-leaf">{t.recoveryPct}%</div>
+              <div className="font-display text-3xl font-extrabold text-leaf">{displayRecoveryPct}%</div>
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Recovery Rate</div>
             </div>
           </div>

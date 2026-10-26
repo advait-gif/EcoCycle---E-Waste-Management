@@ -3,13 +3,14 @@ from functools import lru_cache
 from pathlib import Path
 import secrets
 
-# Absolute path to the backend/ directory (works regardless of CWD)
+# Absolute path to backend and root directories
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_ROOT_DIR = _BACKEND_DIR.parent
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=str(_BACKEND_DIR / ".env"),
+        env_file=(str(_ROOT_DIR / ".env"), str(_BACKEND_DIR / ".env")),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -26,8 +27,20 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # Database — absolute path so it works from any CWD
-    DATABASE_URL: str = f"sqlite:///{_BACKEND_DIR / 'ecocycle.db'}"
+    # Database — supports Supabase PostgreSQL or local SQLite fallback
+    DATABASE_URL: str = ""
+    SUPABASE_DB_URL: str = ""
+    VITE_SUPABASE_URL: str = ""
+    VITE_SUPABASE_ANON_KEY: str = ""
+
+    @property
+    def effective_db_url(self) -> str:
+        url = (self.SUPABASE_DB_URL or self.DATABASE_URL or "").strip()
+        if not url:
+            return f"sqlite:///{_BACKEND_DIR / 'ecocycle.db'}"
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
 
     # OTP
     OTP_EXPIRE_MINUTES: int = 10

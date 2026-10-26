@@ -162,7 +162,7 @@ def receive_delivery(
                         notification_service.send_notification(
                             db, col_id,
                             "Job Completed & Earnings Credited",
-                            f"Pickup {pickup.id[:8]} confirmed by recycler! ₹{amount_paise / 100:.2f} credited to pending earnings.",
+                            f"Pickup {pickup.id[:8]} confirmed by recycler! Rs. {amount_paise / 100:.2f} credited to pending earnings.",
                             reference_type="pickup", reference_id=pickup.id,
                         )
 

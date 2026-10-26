@@ -1,9 +1,12 @@
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardTitle, Chip, PopButton, SectionNote, Stat } from "@/components/sim/ui";
 import { createBatch, runSorting, simulateSorting } from "@/lib/simulation/engine";
 import { useSim } from "@/lib/simulation/react";
 import { kg } from "@/lib/simulation/format";
 import { CATEGORY_MAP } from "@/lib/simulation/config";
+import { getPublicFacilities, type PublicFacility } from "@/lib/api";
+import { useBackend } from "@/hooks/use-backend";
 
 export const Route = createFileRoute("/centers")({
   head: () => ({
@@ -26,6 +29,15 @@ export const Route = createFileRoute("/centers")({
 
 function CentersPage() {
   const s = useSim();
+  const { isOnline } = useBackend();
+  const [realFacilities, setRealFacilities] = useState<PublicFacility[]>([]);
+
+  useEffect(() => {
+    if (isOnline) {
+      getPublicFacilities().then(setRealFacilities).catch(() => {});
+    }
+  }, [isOnline]);
+
   const stored = s.inventory.filter((i) => i.status === "STORED");
   const sortingPreview = simulateSorting(stored, s.settings.factors);
   const inputTotal = stored.reduce((t, i) => t + i.weightKg, 0);
@@ -78,6 +90,49 @@ function CentersPage() {
           );
         })}
       </section>
+
+      {realFacilities.length > 0 ? (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-xl font-bold">Authorized Central Processing Facilities</h2>
+            <Chip tone="leaf">CPCB State Registry Verified</Chip>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {realFacilities.map((f) => (
+              <Card key={f.id} className="border-leaf/30 bg-leaf/5">
+                <CardTitle
+                  title={f.facility_name}
+                  badge={<Chip tone="leaf">{f.cpcb_reg_no}</Chip>}
+                />
+                <dl className="mt-3 space-y-1.5 text-xs">
+                  <div className="flex justify-between border-b border-border/30 pb-1">
+                    <span className="text-muted-foreground">Location</span>
+                    <span className="font-semibold text-foreground">{f.address}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/30 pb-1">
+                    <span className="text-muted-foreground">Certified Annual Capacity</span>
+                    <span className="font-mono font-bold text-foreground">{kg(f.capacity_kg)}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/30 pb-1">
+                    <span className="text-muted-foreground">Batches Completed</span>
+                    <span className="font-mono font-bold text-leaf">{f.batches_processed} batches</span>
+                  </div>
+                  <div className="pt-1">
+                    <span className="text-muted-foreground block mb-1">Permitted E-Waste Categories:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {f.categories_accepted.map((cat) => (
+                        <span key={cat} className="rounded-md bg-cream px-2 py-0.5 text-[10px] font-semibold uppercase">
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </dl>
+              </Card>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-6 lg:grid-cols-12">
         <Card className="lg:col-span-5">

@@ -52,7 +52,9 @@ export async function signInWithSupabaseGoogle(redirectTo?: string) {
     );
   }
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin = typeof window !== "undefined" && window.location.origin
+    ? window.location.origin
+    : "https://ecocycle-seven-tan.vercel.app";
   const targetRedirect = redirectTo || `${origin}/login`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({

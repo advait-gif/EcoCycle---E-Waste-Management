@@ -19,6 +19,6 @@ services:
         generateValue: true
       - key: API_V1_STR
         value: /api/v1
-      # Optional: set CORS_ORIGINS if using a custom domain (e.g., https://my-ecocycle.com)
+      # CORS for Vercel deployment
       - key: CORS_ORIGINS
-        value: ""
+        value: "https://ecocycle-seven-tan.vercel.app"

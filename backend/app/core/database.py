@@ -7,23 +7,32 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from app.core.config import settings
 
-# Render and standard PostgreSQL URLs often start with postgres://, but SQLAlchemy requires postgresql://
-db_url = settings.DATABASE_URL
-if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+# Render and standard PostgreSQL / Supabase URLs
+db_url = settings.effective_db_url
 
 connect_args: dict = {}
+pool_kwargs: dict = {}
 if db_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
+else:
+    # Supabase / PostgreSQL SSL and pooling
+    if "supabase.co" in db_url or "pooler.supabase.com" in db_url:
+        if "sslmode" not in db_url:
+            connect_args = {"sslmode": "require"}
+    pool_kwargs = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    }
 
 engine = create_engine(
     db_url,
     connect_args=connect_args,
     echo=settings.DEBUG,
+    **pool_kwargs,
 )
 
 # Enable WAL mode for SQLite (better concurrency)
-if settings.DATABASE_URL.startswith("sqlite"):
+if db_url.startswith("sqlite"):
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()

@@ -22,6 +22,7 @@ import {
   getPickups as getBackendPickups,
   createPickup as createBackendPickup,
   runLiveBackendLifecycle,
+  advancePickup,
   getToken,
   getMe,
   type ApiCategory,
@@ -212,7 +213,19 @@ function PickupsPage() {
   const handleProcessNextStage = async (id: string) => {
     const rawBackend = backendPickups.find((bp) => id.includes(bp.id.slice(0, 8)) || bp.id === id);
     if (isOnline && rawBackend) {
-      setLifecycleStep("Dispatching verified collector & processing handover...");
+      setLifecycleStep("Advancing real chain of custody in database...");
+      try {
+        const advRes = await advancePickup(rawBackend.id);
+        if (advRes.ok) {
+          await refreshBackend();
+          setLifecycleStep(`✓ Step Complete: ${advRes.message || advRes.status}`);
+          setTimeout(() => setLifecycleStep(null), 3000);
+          return;
+        }
+      } catch (err: any) {
+        console.warn("Direct advance error, trying orchestrator:", err);
+      }
+
       const res = await runLiveBackendLifecycle(
         rawBackend.id,
         rawBackend.estimated_weight_g || 4500,
@@ -220,8 +233,10 @@ function PickupsPage() {
       );
       await refreshBackend();
       if (!res.success) {
-        setLifecycleStep(`Status: ${res.error || "Handover step processing"}`);
-        setTimeout(() => setLifecycleStep(null), 4000);
+        console.warn("Backend lifecycle issue, advancing via local simulation:", res.error);
+        runPickupSimulation(id);
+        setLifecycleStep(`Advanced via simulation (${res.error || "Updated"})`);
+        setTimeout(() => setLifecycleStep(null), 3500);
       } else {
         setTimeout(() => setLifecycleStep(null), 3000);
       }

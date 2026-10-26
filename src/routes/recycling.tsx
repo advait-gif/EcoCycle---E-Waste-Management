@@ -1,8 +1,11 @@
+import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardTitle, Chip, PopButton, SectionNote, Stat } from "@/components/sim/ui";
 import { generateCertificateFor, runRecycling, totals } from "@/lib/simulation/engine";
 import { useSim } from "@/lib/simulation/react";
 import { kg, simDate } from "@/lib/simulation/format";
+import { getPublicBatches, type PublicBatch } from "@/lib/api";
+import { useBackend } from "@/hooks/use-backend";
 
 export const Route = createFileRoute("/recycling")({
   head: () => ({
@@ -34,6 +37,14 @@ const STAGES = [
 function RecyclingPage() {
   const s = useSim();
   const t = totals(s);
+  const { isOnline } = useBackend();
+  const [realBatches, setRealBatches] = useState<PublicBatch[]>([]);
+
+  useEffect(() => {
+    if (isOnline) {
+      getPublicBatches().then(setRealBatches).catch(() => {});
+    }
+  }, [isOnline]);
 
   return (
     <div className="space-y-6">
@@ -66,7 +77,56 @@ function RecyclingPage() {
       </Card>
 
       <section className="space-y-4">
-        {s.batches.length === 0 ? (
+        {realBatches.length > 0 ? (
+          realBatches.map((rb) => (
+            <Card key={rb.id} className="border-leaf/30">
+              <CardTitle
+                title={`Database Batch Manifest: ${rb.id.slice(0, 8)}...`}
+                badge={<Chip tone={rb.status === "COMPLETED" ? "lime" : "leaf"}>{rb.status}</Chip>}
+              />
+              <div className="grid gap-4 md:grid-cols-12">
+                <div className="space-y-1 text-sm md:col-span-5">
+                  <div className="text-muted-foreground text-xs font-semibold">
+                    {rb.collector_name} → {rb.facility_name}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{rb.facility_address}</div>
+                  <div className="font-mono text-xs font-bold pt-1">
+                    Collector Weight: {kg(rb.collector_weight_kg)} | Facility Intake: {kg(rb.recycler_weight_kg)}
+                  </div>
+                  <div className="font-mono text-xs text-muted-foreground">
+                    Delivered: {new Date(rb.delivered_at).toLocaleString()}
+                  </div>
+                </div>
+
+                <div className="md:col-span-4">
+                  <div className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                    Recycling Recovery Efficiency
+                  </div>
+                  <div className="mt-2 rounded-xl bg-cream p-3 border border-border/40">
+                    <div className="text-xs text-muted-foreground">Recovery Yield Rate</div>
+                    <div className="font-display text-xl font-bold text-leaf">{rb.recovery_yield_pct}%</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">Circular economy output recovered</div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 md:col-span-3 justify-between">
+                  <div className="rounded-2xl bg-cream p-3 border border-border/40">
+                    <div className="text-xs font-bold text-muted-foreground uppercase">Avoided GHG Emissions</div>
+                    <div className="font-display text-xl font-extrabold text-leaf mt-0.5">
+                      {Math.round(rb.recycler_weight_kg * 1.42)} kg CO₂e
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">CPCB Factor Verified</span>
+                  </div>
+                  <div className="rounded-xl bg-leaf/10 border border-leaf/30 text-leaf text-center text-xs font-bold py-2">
+                    ✓ Verified In Custody
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))
+        ) : null}
+
+        {s.batches.length === 0 && realBatches.length === 0 ? (
           <Card>
             <SectionNote>No facility processing batches recorded yet. Batches are generated as collected loads arrive at partner facilities.</SectionNote>
           </Card>
